@@ -1,0 +1,117 @@
+import { describe, it, expect } from 'vitest';
+import { z } from 'zod';
+import {
+  extractAndValidateJson,
+  MockAIAdapter,
+  OpenRouterAIAdapter,
+  getAIAdapter,
+} from '../src';
+
+describe('AI Adapters & JSON Parser', () => {
+  describe('extractAndValidateJson', () => {
+    const TestSchema = z.object({
+      name: z.string(),
+      score: z.number(),
+    });
+
+    it('should parse raw JSON string', () => {
+      const raw = '{"name": "Shorts Studio", "score": 99}';
+      const parsed = extractAndValidateJson(raw, TestSchema);
+      expect(parsed).toEqual({ name: 'Shorts Studio', score: 99 });
+    });
+
+    it('should strip markdown code fences', () => {
+      const raw = '```json\n{"name": "Shorts Studio", "score": 100}\n```';
+      const parsed = extractAndValidateJson(raw, TestSchema);
+      expect(parsed.name).toBe('Shorts Studio');
+      expect(parsed.score).toBe(100);
+    });
+
+    it('should extract JSON from conversational text', () => {
+      const raw = 'Here is your requested output:\n\n{"name": "Extracted", "score": 50}\n\nHope this helps!';
+      const parsed = extractAndValidateJson(raw, TestSchema);
+      expect(parsed.name).toBe('Extracted');
+    });
+
+    it('should throw clear error on schema mismatch', () => {
+      const raw = '{"name": "Bad", "score": "not-a-number"}';
+      expect(() => extractAndValidateJson(raw, TestSchema)).toThrowError(/schema/i);
+    });
+  });
+
+  describe('MockAIAdapter', () => {
+    const adapter = new MockAIAdapter();
+
+    it('should return health check', async () => {
+      const check = await adapter.testConnection();
+      expect(check.connected).toBe(true);
+      expect(check.provider).toBe('mock');
+    });
+
+    it('should generate an original story conforming to StoryDocumentSchema', async () => {
+      const res = await adapter.generateStory({
+        topic: 'A space hamster stealing moon cheese',
+        targetDurationSeconds: 30,
+        category: 'Sci-Fi',
+        intendedAudience: 'General',
+        tone: 'Humorous',
+        visualStyle: 'Stylized 3D',
+        language: 'English',
+      });
+
+      expect(res.story.title).toBeTruthy();
+      expect(res.story.logline).toContain('moon cheese');
+      expect(res.story.characterDescriptions.length).toBeGreaterThan(0);
+      expect(res.metadata.status).toBe('success');
+    });
+
+    it('should generate a narration script matching target duration', async () => {
+      const storyRes = await adapter.generateStory({
+        topic: 'A space hamster',
+        targetDurationSeconds: 30,
+        category: 'Sci-Fi',
+        intendedAudience: 'General',
+        tone: 'Humorous',
+        visualStyle: 'Stylized 3D',
+        language: 'English',
+      });
+
+      const scriptRes = await adapter.generateScript(storyRes.story, 30);
+      expect(scriptRes.script.scenes.length).toBeGreaterThan(1);
+      expect(scriptRes.script.totalEstimatedDurationSeconds).toBe(30);
+      expect(scriptRes.script.scenes[0]!.dialogue).toBeDefined();
+    });
+
+    it('should break down script into structured 3D scenes', async () => {
+      const storyRes = await adapter.generateStory({
+        topic: 'A space hamster',
+        targetDurationSeconds: 30,
+        category: 'Sci-Fi',
+        intendedAudience: 'General',
+        tone: 'Humorous',
+        visualStyle: 'Stylized 3D',
+        language: 'English',
+      });
+      const scriptRes = await adapter.generateScript(storyRes.story, 30);
+      const scenesRes = await adapter.breakdownScenes(scriptRes.script, storyRes.story);
+
+      expect(scenesRes.scenes.length).toBe(scriptRes.script.scenes.length);
+      expect(scenesRes.scenes[0]!.environmentDescription).toBeTruthy();
+      expect(scenesRes.scenes[0]!.cameraDirectionSuggestions).toBeTruthy();
+      expect(scenesRes.scenes[0]!.propsRequired.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('getAIAdapter factory', () => {
+    it('should return MockAIAdapter when mockAi is true', () => {
+      const adapter = getAIAdapter({ mockAi: true });
+      expect(adapter.providerName).toBe('mock');
+    });
+
+    it('should fallback to MockAIAdapter if API key is placeholder', () => {
+      const adapter = getAIAdapter({ provider: 'openrouter', apiKey: 'placeholder' });
+      expect(adapter.providerName).toBe('mock');
+    });
+  });
+});
+

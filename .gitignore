@@ -1,0 +1,56 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build and Compilation Outputs
+dist/
+build/
+dist-ssr/
+*.tsbuildinfo
+
+# Turborepo & Bundler Caches
+.turbo/
+.vite/
+.next/
+
+# Environment Secrets
+.env
+.env.*
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+!.env.example
+
+# Testing & Coverage
+coverage/
+.nyc_output/
+
+# Temporary and Cache Directories
+.temp/
+tmp/
+temp/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Media, Assets & Render Outputs
+renders/
+uploads/
+storage_data/
+*.mp4
+*.wav
+*.mp3
+
+# Supabase Local
+.supabase/
+
+# OS Artifacts
+.DS_Store
+Thumbs.db
+desktop.ini
+
+Thumbs.db
+desktop.ini

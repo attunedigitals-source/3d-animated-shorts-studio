@@ -1,0 +1,38 @@
+{
+  "name": "3d-animated-shorts-studio-monorepo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Production-ready AI-powered 3D animated shorts video production studio",
+  "packageManager": "pnpm@9.12.3",
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "typecheck": "turbo run typecheck",
+    "clean": "turbo run clean",
+    "dev:web": "pnpm --filter @studio/web dev",
+    "dev:api": "pnpm --filter @studio/api dev",
+    "dev:worker": "pnpm --filter @studio/worker dev"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.7",
+    "prettier": "^3.3.3",
+    "turbo": "^2.2.3",
+    "typescript": "^5.6.3"
+  },
+  "pnpm": {
+    "overrides": {
+      "rollup": "npm:@rollup/wasm-node@^4.34.8"
+    }
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  }
+}
+
