@@ -73,7 +73,7 @@ app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
 
 export default app;
 
-if (process.env.NODE_ENV !== 'test') {
+if (process.env.NODE_ENV !== 'test' && !process.env.VERCEL) {
   app.listen(port, () => {
     console.log(`[API] 3D Animated Shorts Studio API listening on port ${port}`);
   });

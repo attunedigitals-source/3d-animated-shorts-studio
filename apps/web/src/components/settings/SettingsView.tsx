@@ -47,6 +47,14 @@ export const SettingsView: React.FC = () => {
   const [showSupabaseAnonKey, setShowSupabaseAnonKey] = useState(false);
   const [showSupabaseServiceKey, setShowSupabaseServiceKey] = useState(false);
 
+  // Custom API URL
+  const [customApiUrl, setCustomApiUrl] = useState(() => {
+    if (typeof localStorage !== 'undefined') {
+      return localStorage.getItem('studio_custom_api_url') || '';
+    }
+    return '';
+  });
+
   // Test states
   const [aiTestResult, setAiTestResult] = useState<TestConnectionResponse | null>(null);
   const [isTestingAi, setIsTestingAi] = useState(false);
@@ -666,6 +674,35 @@ export const SettingsView: React.FC = () => {
                 <code className="text-emerald-400 font-mono">packages/database/migrations/001_phase1_schema.sql</code>{' '}
                 in your Supabase SQL Editor to initialize all tables and Row Level Security policies.
               </div>
+            </div>
+
+            {/* Optional Custom API Endpoint */}
+            <div className="pt-2 border-t border-slate-800/60 space-y-1.5">
+              <label className="text-xs font-semibold text-slate-300 flex items-center justify-between">
+                <span className="flex items-center gap-1.5">
+                  <Globe className="w-3.5 h-3.5 text-indigo-400" />
+                  Backend API Endpoint (Optional)
+                </span>
+                <span className="text-[10px] text-slate-500">
+                  Default: Auto-Detect (same-origin / relative)
+                </span>
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. https://your-backend.railway.app/api or leave blank for auto-detect"
+                value={customApiUrl}
+                onChange={(e) => {
+                  setCustomApiUrl(e.target.value);
+                  if (typeof localStorage !== 'undefined') {
+                    if (e.target.value.trim()) {
+                      localStorage.setItem('studio_custom_api_url', e.target.value.trim());
+                    } else {
+                      localStorage.removeItem('studio_custom_api_url');
+                    }
+                  }
+                }}
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 font-mono"
+              />
             </div>
           </div>
         </div>

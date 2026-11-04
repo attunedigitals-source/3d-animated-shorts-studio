@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@studio/3d-engine": "workspace:*",
+    "@studio/ai-adapters": "workspace:*",
     "@studio/types": "workspace:*",
     "@studio/video-compositor": "workspace:*",
     "@supabase/supabase-js": "^2.45.6",

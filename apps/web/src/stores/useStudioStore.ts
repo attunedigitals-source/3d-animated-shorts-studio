@@ -170,6 +170,14 @@ export const useStudioStore = create<StudioState>((set, get) => ({
     set({ isSaving: true });
     try {
       const { aiSettings, voiceSettings, supabaseSettings } = get();
+
+      // Persist immediately in browser storage
+      if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+        localStorage.setItem('studio_ai_settings', JSON.stringify(aiSettings));
+        localStorage.setItem('studio_voice_settings', JSON.stringify(voiceSettings));
+        localStorage.setItem('studio_supabase_settings', JSON.stringify(supabaseSettings));
+      }
+
       const payload = {
         ai: {
           provider: aiSettings.provider,
@@ -193,13 +201,18 @@ export const useStudioStore = create<StudioState>((set, get) => ({
         },
       };
 
+      const hasSupabaseKeys = Boolean(
+        supabaseSettings.supabaseUrl &&
+        supabaseSettings.supabaseAnonKey &&
+        !supabaseSettings.supabaseUrl.includes('your-project-id') &&
+        !supabaseSettings.supabaseAnonKey.includes('placeholder')
+      );
+
       const res = await api.saveSettings(payload);
-      if (res?.data) {
-        set({
-          isSupabaseConfigured: res.data.database?.isSupabaseConfigured ?? false,
-          notification: { type: 'success', message: 'All studio settings & credentials saved successfully.' },
-        });
-      }
+      set({
+        isSupabaseConfigured: res?.data?.database?.isSupabaseConfigured ?? hasSupabaseKeys,
+        notification: { type: 'success', message: 'All studio settings & credentials saved successfully!' },
+      });
     } catch (err: any) {
       set({
         notification: { type: 'error', message: err.message || 'Failed to save settings.' },
@@ -211,6 +224,19 @@ export const useStudioStore = create<StudioState>((set, get) => ({
 
   initStudio: async () => {
     try {
+      // 1. Check local storage first
+      let localAi: any = {};
+      let localVoice: any = {};
+      let localDb: any = {};
+
+      if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+        try {
+          localAi = JSON.parse(localStorage.getItem('studio_ai_settings') || '{}');
+          localVoice = JSON.parse(localStorage.getItem('studio_voice_settings') || '{}');
+          localDb = JSON.parse(localStorage.getItem('studio_supabase_settings') || '{}');
+        } catch {}
+      }
+
       const [session, settingsRes] = await Promise.all([
         api.getSession().catch(() => null),
         api.getSettings().catch(() => null),
@@ -220,27 +246,48 @@ export const useStudioStore = create<StudioState>((set, get) => ({
         set({ user: session.user, isDevAuth: Boolean(session.isDevFallback) });
       }
 
-      if (settingsRes) {
-        set({
-          isSupabaseConfigured: settingsRes.database?.isSupabaseConfigured ?? false,
-          availableModels: settingsRes.availableModels || [],
-          aiSettings: {
-            provider: settingsRes.ai?.provider || 'openrouter',
-            model: settingsRes.ai?.model || 'anthropic/claude-3.5-sonnet',
-            mockAi: settingsRes.ai?.mockAi ?? false,
-          },
-          voiceSettings: {
-            provider: settingsRes.voice?.provider || 'ai33',
-            baseUrl: settingsRes.voice?.baseUrl || 'https://api.ai33.pro/v3',
-            defaultVoiceId: settingsRes.voice?.defaultVoiceId || 'minimax_male-qn-qingse',
-          },
-          supabaseSettings: {
-            mode: settingsRes.database?.mode || (settingsRes.database?.isSupabaseConfigured ? 'supabase' : 'dev'),
-            supabaseUrl: settingsRes.database?.supabaseUrl || '',
-            supabaseAnonKey: '',
-          },
-        });
-      }
+      const effectiveAi = {
+        provider: localAi.provider || settingsRes?.ai?.provider || 'openrouter',
+        model: localAi.model || settingsRes?.ai?.model || 'anthropic/claude-3.5-sonnet',
+        apiKey: localAi.apiKey || settingsRes?.ai?.apiKey || '',
+        baseUrl: localAi.baseUrl || settingsRes?.ai?.baseUrl || '',
+        mockAi: localAi.mockAi ?? settingsRes?.ai?.mockAi ?? false,
+      };
+
+      const effectiveVoice = {
+        provider: localVoice.provider || settingsRes?.voice?.provider || 'ai33',
+        apiKey: localVoice.apiKey || settingsRes?.voice?.apiKey || '',
+        baseUrl: localVoice.baseUrl || settingsRes?.voice?.baseUrl || 'https://api.ai33.pro/v3',
+        defaultVoiceId: localVoice.defaultVoiceId || settingsRes?.voice?.defaultVoiceId || 'minimax_male-qn-qingse',
+      };
+
+      const effectiveDb = {
+        mode: localDb.mode || settingsRes?.database?.mode || 'dev',
+        supabaseUrl: localDb.supabaseUrl || settingsRes?.database?.supabaseUrl || '',
+        supabaseAnonKey: localDb.supabaseAnonKey || settingsRes?.database?.supabaseAnonKey || '',
+        supabaseServiceRoleKey: localDb.supabaseServiceRoleKey || settingsRes?.database?.supabaseServiceRoleKey || '',
+      };
+
+      const isSupabaseConfigured = Boolean(
+        settingsRes?.database?.isSupabaseConfigured ||
+        (effectiveDb.supabaseUrl && effectiveDb.supabaseAnonKey && !effectiveDb.supabaseUrl.includes('your-project-id'))
+      );
+
+      set({
+        aiSettings: effectiveAi,
+        voiceSettings: effectiveVoice,
+        supabaseSettings: effectiveDb,
+        isSupabaseConfigured,
+        availableModels: settingsRes?.availableModels || [
+          { id: 'anthropic/claude-3.5-sonnet', name: 'Claude 3.5 Sonnet', provider: 'openrouter', tier: 'flagship', description: 'Best-in-class reasoning and cinematic screenplay scripting' },
+          { id: 'openai/gpt-4o', name: 'GPT-4o', provider: 'openrouter', tier: 'flagship', description: 'Fast, high-fidelity dialogue and story arcs' },
+          { id: 'meta-llama/llama-3.3-70b-instruct', name: 'Llama 3.3 70B', provider: 'openrouter', tier: 'standard', description: 'Open-weight high-throughput narrative engine' },
+          { id: 'google/gemini-2.0-flash-exp:free', name: 'Gemini 2.0 Flash (Free)', provider: 'openrouter', tier: 'fast', description: 'Zero-cost high-speed narrative generation' },
+          { id: 'claude-3-5-sonnet-20241022', name: 'Claude 3.5 Sonnet (Direct)', provider: 'anthropic', tier: 'flagship', description: 'Direct Anthropic Claude integration' },
+          { id: 'gpt-4o', name: 'GPT-4o (Direct)', provider: 'openai', tier: 'flagship', description: 'Direct OpenAI GPT-4o' },
+          { id: 'mock-story-v1', name: 'Mock Engine V1', provider: 'mock', tier: 'mock', description: 'Instant offline deterministic responses' },
+        ],
+      });
 
       await get().fetchProjects();
     } catch (err: any) {

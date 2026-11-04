@@ -102,6 +102,9 @@ importers:
       '@studio/3d-engine':
         specifier: workspace:*
         version: link:../../packages/3d-engine
+      '@studio/ai-adapters':
+        specifier: workspace:*
+        version: link:../../packages/ai-adapters
       '@studio/types':
         specifier: workspace:*
         version: link:../../packages/types
