@@ -28,11 +28,12 @@ export const DashboardView: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Statistics calculation from real project data
-  const totalProjects = projects.length;
-  const totalScenes = projects.reduce((acc, p) => acc + (p.sceneCount || 0), 0);
-  const totalSeconds = projects.reduce((acc, p) => acc + (p.estimatedDurationSeconds || 0), 0);
+  const safeProjects = Array.isArray(projects) ? projects : [];
+  const totalProjects = safeProjects.length;
+  const totalScenes = safeProjects.reduce((acc, p) => acc + (p?.sceneCount || 0), 0);
+  const totalSeconds = safeProjects.reduce((acc, p) => acc + (p?.estimatedDurationSeconds || 0), 0);
   const formattedDuration = `${Math.floor(totalSeconds / 60)}m ${totalSeconds % 60}s`;
-  const storiesGenerated = projects.filter((p) => p.hasStory).length;
+  const storiesGenerated = safeProjects.filter((p) => p?.hasStory).length;
 
   const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -168,12 +169,12 @@ export const DashboardView: React.FC = () => {
             onClick={() => setActiveView('projects')}
             className="text-xs font-semibold text-indigo-400 hover:text-indigo-300 flex items-center gap-1"
           >
-            View All ({projects.length})
+            View All ({safeProjects.length})
             <ChevronRight className="w-3.5 h-3.5" />
           </button>
         </div>
 
-        {projects.length === 0 ? (
+        {safeProjects.length === 0 ? (
           <div className="text-center py-16 px-4 rounded-2xl border border-dashed border-slate-800 bg-slate-950/40 space-y-4">
             <div className="w-12 h-12 rounded-full bg-slate-900 mx-auto flex items-center justify-center text-slate-600">
               <FolderKanban className="w-6 h-6" />
@@ -193,7 +194,7 @@ export const DashboardView: React.FC = () => {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {projects.slice(0, 6).map((proj) => (
+            {safeProjects.slice(0, 6).map((proj) => (
               <div
                 key={proj.id}
                 onClick={async () => {

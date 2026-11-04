@@ -5,22 +5,29 @@ import { OpenRouterAIAdapter } from './openrouter-adapter';
 import { OpenAICompatibleAdapter } from './openai-adapter';
 import { AnthropicAIAdapter } from './anthropic-adapter';
 
+const getEnv = (key: string): string | undefined => {
+  if (typeof process !== 'undefined' && process.env) {
+    return process.env[key];
+  }
+  return undefined;
+};
+
 export function getAIAdapter(settings?: Partial<AISettings>): IAIProviderAdapter {
   const isMockExplicit =
     settings?.mockAi === true ||
     settings?.provider === 'mock' ||
-    process.env.MOCK_AI === 'true' ||
-    process.env.AI_PROVIDER === 'mock';
+    getEnv('MOCK_AI') === 'true' ||
+    getEnv('AI_PROVIDER') === 'mock';
 
   if (isMockExplicit) {
     return new MockAIAdapter();
   }
 
-  const provider: AIProviderType = settings?.provider || (process.env.AI_PROVIDER as AIProviderType) || 'openrouter';
+  const provider: AIProviderType = settings?.provider || (getEnv('AI_PROVIDER') as AIProviderType) || 'openrouter';
 
   switch (provider) {
     case 'openrouter': {
-      const apiKey = settings?.apiKey || process.env.OPENROUTER_API_KEY;
+      const apiKey = settings?.apiKey || getEnv('OPENROUTER_API_KEY');
       if (!apiKey || apiKey.includes('placeholder')) {
         console.warn(
           '[AI Adapters] OpenRouter API key not configured or is placeholder. Using MockAIAdapter for local execution.',
@@ -33,7 +40,7 @@ export function getAIAdapter(settings?: Partial<AISettings>): IAIProviderAdapter
       return new OpenAICompatibleAdapter();
     }
     case 'anthropic': {
-      const apiKey = settings?.apiKey || process.env.ANTHROPIC_API_KEY;
+      const apiKey = settings?.apiKey || getEnv('ANTHROPIC_API_KEY');
       if (!apiKey || apiKey.includes('placeholder')) {
         console.warn(
           '[AI Adapters] Anthropic API key not configured or is placeholder. Using MockAIAdapter for local execution.',

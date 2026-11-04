@@ -32,11 +32,13 @@ export const ProjectsView: React.FC = () => {
 
   const categories = ['All', 'Comedy', 'Adventure', 'Whimsical', 'Sci-Fi', 'Action'];
 
-  const filteredProjects = projects.filter((p) => {
+  const safeProjects = Array.isArray(projects) ? projects : [];
+
+  const filteredProjects = safeProjects.filter((p) => {
     const matchesSearch =
-      p.title.toLowerCase().includes(search.toLowerCase()) ||
-      (p.description && p.description.toLowerCase().includes(search.toLowerCase()));
-    const matchesCat = selectedCategory === 'All' || p.preferences.category === selectedCategory;
+      (p?.title || '').toLowerCase().includes(search.toLowerCase()) ||
+      (p?.description && p.description.toLowerCase().includes(search.toLowerCase()));
+    const matchesCat = selectedCategory === 'All' || p?.preferences?.category === selectedCategory;
     return matchesSearch && matchesCat;
   });
 
@@ -131,7 +133,7 @@ export const ProjectsView: React.FC = () => {
                     {p.title}
                   </h3>
                   <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-800 text-slate-300 border border-slate-700">
-                    {p.preferences.category}
+                    {p?.preferences?.category || 'Comedy'}
                   </span>
                 </div>
                 <p className="text-xs text-slate-400 line-clamp-2 leading-relaxed">
@@ -143,7 +145,7 @@ export const ProjectsView: React.FC = () => {
               <div className="flex items-center gap-4 text-xs text-slate-400 py-2 border-y border-slate-800/60">
                 <div className="flex items-center gap-1.5">
                   <Clock className="w-3.5 h-3.5 text-indigo-400" />
-                  <span>{p.preferences.targetDurationSeconds}s</span>
+                  <span>{p?.preferences?.targetDurationSeconds || 30}s</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <Layers className="w-3.5 h-3.5 text-emerald-400" />

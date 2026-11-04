@@ -9,13 +9,20 @@ export interface VoiceAdapterOptions {
   mockVoice?: boolean;
 }
 
+const getEnv = (key: string): string | undefined => {
+  if (typeof process !== 'undefined' && process.env) {
+    return process.env[key];
+  }
+  return undefined;
+};
+
 /**
  * Returns an instance of IVoiceAdapter based on runtime configuration.
  */
 export function getVoiceAdapter(options?: VoiceAdapterOptions): IVoiceAdapter {
-  const forceMock = options?.mockVoice ?? (process.env.MOCK_VOICE === 'true');
-  const provider = options?.provider ?? process.env.VOICE_PROVIDER ?? 'ai33';
-  const apiKey = options?.apiKey ?? process.env.AI33_API_KEY;
+  const forceMock = options?.mockVoice ?? (getEnv('MOCK_VOICE') === 'true');
+  const provider = options?.provider ?? getEnv('VOICE_PROVIDER') ?? 'ai33';
+  const apiKey = options?.apiKey ?? getEnv('AI33_API_KEY');
 
   if (forceMock || provider === 'mock') {
     return new MockVoiceAdapter();

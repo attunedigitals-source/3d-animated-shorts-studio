@@ -8,9 +8,16 @@ export interface SupabaseConfig {
   supabaseServiceRoleKey?: string;
 }
 
+const getEnv = (key: string): string | undefined => {
+  if (typeof process !== 'undefined' && process.env) {
+    return process.env[key];
+  }
+  return undefined;
+};
+
 export async function testSupabaseConnection(config: SupabaseConfig): Promise<{ connected: boolean; message: string; latencyMs: number }> {
-  const url = config.supabaseUrl || process.env.SUPABASE_URL;
-  const key = config.supabaseAnonKey || config.supabaseServiceRoleKey || process.env.SUPABASE_ANON_KEY;
+  const url = config.supabaseUrl || getEnv('SUPABASE_URL');
+  const key = config.supabaseAnonKey || config.supabaseServiceRoleKey || getEnv('SUPABASE_ANON_KEY');
 
   if (!url || !key || url.includes('your-project-id') || key.includes('placeholder')) {
     return {

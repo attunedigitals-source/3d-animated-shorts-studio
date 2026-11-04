@@ -299,9 +299,10 @@ export const useStudioStore = create<StudioState>((set, get) => ({
     set({ isLoadingProjects: true });
     try {
       const projects = await api.getProjects();
-      set({ projects, isLoadingProjects: false });
+      set({ projects: Array.isArray(projects) ? projects : [], isLoadingProjects: false });
     } catch (err: any) {
       set({
+        projects: [],
         isLoadingProjects: false,
         notification: { type: 'error', message: err.message || 'Failed to fetch projects' },
       });

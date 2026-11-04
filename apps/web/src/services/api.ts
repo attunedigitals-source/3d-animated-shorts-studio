@@ -94,7 +94,15 @@ class ApiService {
       headers,
     });
 
-    const data = await response.json().catch(() => ({}));
+    const contentType = response.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) {
+      throw new Error(`Endpoint returned non-JSON response (${contentType || 'text/html'})`);
+    }
+
+    const data = await response.json().catch(() => null);
+    if (!data) {
+      throw new Error('Invalid JSON received from server.');
+    }
 
     if (!response.ok || data.success === false) {
       const message = data.error?.message || `Request failed with status ${response.status}`;
@@ -167,7 +175,9 @@ class ApiService {
   // Projects
   async getProjects(): Promise<ProjectSummary[]> {
     try {
-      return await this.request<ProjectSummary[]>('/projects');
+      const res = await this.request<ProjectSummary[]>('/projects');
+      if (Array.isArray(res)) return res;
+      throw new Error('Projects response was not an array');
     } catch {
       return clientRepository.getProjects(this.devUserId);
     }

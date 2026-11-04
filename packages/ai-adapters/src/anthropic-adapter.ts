@@ -15,14 +15,21 @@ import { IAIProviderAdapter } from './types';
 import { extractAndValidateJson } from './parser';
 import { buildStoryPrompt, buildScriptPrompt, buildSceneBreakdownPrompt } from './prompts';
 
+const getEnv = (key: string): string | undefined => {
+  if (typeof process !== 'undefined' && process.env) {
+    return process.env[key];
+  }
+  return undefined;
+};
+
 export class AnthropicAIAdapter implements IAIProviderAdapter {
   readonly providerName = 'anthropic';
 
   private resolveConfig(settings?: Partial<AISettings>) {
-    const apiKey = settings?.apiKey || process.env.ANTHROPIC_API_KEY;
-    const baseUrl = settings?.baseUrl || process.env.ANTHROPIC_BASE_URL || 'https://api.anthropic.com/v1';
-    const model = settings?.model || process.env.ANTHROPIC_DEFAULT_MODEL || 'claude-3-5-sonnet-20241022';
-    const timeoutMs = settings?.timeoutMs || Number(process.env.AI_REQUEST_TIMEOUT_MS) || 60000;
+    const apiKey = settings?.apiKey || getEnv('ANTHROPIC_API_KEY');
+    const baseUrl = settings?.baseUrl || getEnv('ANTHROPIC_BASE_URL') || 'https://api.anthropic.com/v1';
+    const model = settings?.model || getEnv('ANTHROPIC_DEFAULT_MODEL') || 'claude-3-5-sonnet-20241022';
+    const timeoutMs = settings?.timeoutMs || Number(getEnv('AI_REQUEST_TIMEOUT_MS')) || 60000;
     const temperature = settings?.temperature ?? 0.7;
 
     return { apiKey, baseUrl, model, timeoutMs, temperature };

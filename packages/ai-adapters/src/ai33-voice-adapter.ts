@@ -12,6 +12,13 @@ import { IVoiceAdapter } from './types';
  * Integrates ElevenLabs, Minimax, Clone, Edge, Kokoro, Vbee, and FishAudio voice models
  * into the 3D Animated Shorts Studio pipeline.
  */
+const getEnv = (key: string): string | undefined => {
+  if (typeof process !== 'undefined' && process.env) {
+    return process.env[key];
+  }
+  return undefined;
+};
+
 export class AI33VoiceAdapter implements IVoiceAdapter {
   readonly providerName = 'ai33';
   private readonly defaultBaseUrl = 'https://api.ai33.pro/v3';
@@ -19,7 +26,7 @@ export class AI33VoiceAdapter implements IVoiceAdapter {
   constructor(private readonly apiKey?: string, private readonly baseUrl?: string) {}
 
   private getEffectiveApiKey(overrideKey?: string): string {
-    const key = overrideKey || this.apiKey || process.env.AI33_API_KEY;
+    const key = overrideKey || this.apiKey || getEnv('AI33_API_KEY');
     if (!key || key.includes('placeholder')) {
       throw new Error('AI33_API_KEY is not configured or contains placeholder value.');
     }
@@ -27,7 +34,7 @@ export class AI33VoiceAdapter implements IVoiceAdapter {
   }
 
   private getEffectiveBaseUrl(): string {
-    return this.baseUrl || process.env.AI33_BASE_URL || this.defaultBaseUrl;
+    return this.baseUrl || getEnv('AI33_BASE_URL') || this.defaultBaseUrl;
   }
 
   /**
