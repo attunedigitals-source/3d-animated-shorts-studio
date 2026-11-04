@@ -88,6 +88,54 @@ describe('API Integration Test Suite', () => {
       expect(res.body.data.connected).toBe(true);
       expect(res.body.data.provider).toBe('mock');
     });
+
+    it('should update runtime settings and credentials via POST /api/settings', async () => {
+      const res = await request(app)
+        .post('/api/settings')
+        .set(aliceHeaders)
+        .send({
+          ai: {
+            provider: 'mock',
+            model: 'deterministic-mock-v1',
+          },
+          voice: {
+            provider: 'mock',
+            defaultVoiceId: 'minimax_male-qn-qingse',
+          },
+          database: {
+            mode: 'dev',
+          },
+        });
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.ai.provider).toBe('mock');
+      expect(res.body.data.voice.provider).toBe('mock');
+      expect(res.body.data.database.mode).toBe('dev');
+    });
+
+    it('should test mock voice connection via POST /api/settings/test-voice', async () => {
+      const res = await request(app)
+        .post('/api/settings/test-voice')
+        .set(aliceHeaders)
+        .send({ provider: 'mock' });
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.connected).toBe(true);
+    });
+
+    it('should handle supabase test connection gracefully with invalid or placeholder keys', async () => {
+      const res = await request(app)
+        .post('/api/settings/test-supabase')
+        .set(aliceHeaders)
+        .send({ supabaseUrl: 'placeholder', supabaseAnonKey: 'placeholder' });
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.connected).toBe(false);
+      expect(res.body.data.message).toContain('placeholder');
+    });
   });
 
   describe('Project Management & Access Isolation (/api/projects)', () => {

@@ -104,5 +104,31 @@ describe('useStudioStore Unit Tests', () => {
     deleteScene(sceneId);
     expect(useStudioStore.getState().scenesDraft.length).toBe(0);
   });
+
+  it('should update voice and supabase settings in state', () => {
+    const { setVoiceSettings, setSupabaseSettings } = useStudioStore.getState();
+
+    setVoiceSettings({
+      provider: 'ai33',
+      apiKey: 'test-ai33-key',
+      defaultVoiceId: 'edge_en-US-GuyNeural',
+    });
+
+    const voice = useStudioStore.getState().voiceSettings;
+    expect(voice.provider).toBe('ai33');
+    expect(voice.apiKey).toBe('test-ai33-key');
+    expect(voice.defaultVoiceId).toBe('edge_en-US-GuyNeural');
+
+    setSupabaseSettings({
+      mode: 'supabase',
+      supabaseUrl: 'https://test-project.supabase.co',
+      supabaseAnonKey: 'test-anon-key',
+    });
+
+    const db = useStudioStore.getState().supabaseSettings;
+    expect(db.mode).toBe('supabase');
+    expect(db.supabaseUrl).toBe('https://test-project.supabase.co');
+    expect(db.supabaseAnonKey).toBe('test-anon-key');
+  });
 });
 

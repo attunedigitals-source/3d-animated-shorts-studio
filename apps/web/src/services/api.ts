@@ -11,6 +11,9 @@ import {
   StructuredScene,
   AISettings,
   TestConnectionResponse,
+  TestSupabaseResponse,
+  TestVoiceResponse,
+  StudioSettingsPayload,
   UserProfile,
   UserCredentials,
 } from '@studio/types';
@@ -211,10 +214,31 @@ class ApiService {
     return this.request<any>('/settings');
   }
 
+  async saveSettings(settings: StudioSettingsPayload): Promise<any> {
+    return this.request<any>('/settings', {
+      method: 'POST',
+      body: JSON.stringify(settings),
+    });
+  }
+
   async testConnection(settings: Partial<AISettings>): Promise<TestConnectionResponse> {
     return this.request<TestConnectionResponse>('/settings/test-connection', {
       method: 'POST',
       body: JSON.stringify(settings),
+    });
+  }
+
+  async testVoiceConnection(options: { apiKey?: string; baseUrl?: string; provider?: string }): Promise<TestVoiceResponse> {
+    return this.request<TestVoiceResponse>('/settings/test-voice', {
+      method: 'POST',
+      body: JSON.stringify(options),
+    });
+  }
+
+  async testSupabaseConnection(options: { supabaseUrl?: string; supabaseAnonKey?: string }): Promise<TestSupabaseResponse> {
+    return this.request<TestSupabaseResponse>('/settings/test-supabase', {
+      method: 'POST',
+      body: JSON.stringify(options),
     });
   }
 }

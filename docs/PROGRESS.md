@@ -36,16 +36,16 @@ This document tracks the live implementation status of the 3D Animated Shorts St
 
 ### Phase 1: Project Foundation & AI Story Engine (Completed & Verified)
 - [x] Install base dependencies across workspaces (`pnpm install`).
-- [x] Implement `@studio/types` domain models and Zod schemas (`StoryPromptOptionsSchema`, `StoryDocumentSchema`, `ScriptDocumentSchema`, `StructuredSceneSchema`, `CreateProjectSchema`, `AI33VoiceSchema`, `AI33DialogueRequestSchema`).
+- [x] Implement `@studio/types` domain models and Zod schemas (`StoryPromptOptionsSchema`, `StoryDocumentSchema`, `ScriptDocumentSchema`, `StructuredSceneSchema`, `CreateProjectSchema`, `AI33VoiceSchema`, `AI33DialogueRequestSchema`, `StudioSettingsPayload`).
 - [x] Implement `@studio/ai-adapters` (OpenRouter, OpenAI-compatible, Anthropic, Mock AI adapter, markdown-fence-stripping JSON parser, ai33.pro voice adapter).
-- [x] Implement `@studio/database` schema migration scripts (`001_phase1_schema.sql` with RLS) and dual repository (Supabase production client + DevDatabaseRepository local persistent fallback).
-- [x] Implement `apps/api` Express backend with authentication middleware, project CRUD, story generation, script generation, scene breakdown, and safe settings endpoints.
-- [x] Implement `apps/web` desktop-first creative studio UI in React 18, Vite, Tailwind CSS, and Zustand (Dashboard, Projects, AI Story Studio, Script Editor, Scene Breakdown, Settings, Auth modal).
-- [x] Automated test suites across all workspaces (62 tests passing: `@studio/types`: 12, `@studio/database`: 11, `@studio/ai-adapters`: 15, `apps/web`: 6, `apps/api`: 18).
-- [x] Monorepo code linting with ESLint v9 flat config verified across all 9 packages with 0 errors.
-- [x] Monorepo strict typechecking (`tsc --noEmit`) verified across all 9 packages with 0 errors.
-- [x] Production builds verified for both `apps/web` (`vite build`) and `apps/api` (`tsc`), plus Turborepo `turbo run build` across all 9 packages (exit code 0).
-- [x] Live runtime probe verified against running local Express backend (health, project creation, story generation, script generation, scene breakdown, and full project retrieval).
+- [x] Implement `@studio/database` schema migration scripts (`001_phase1_schema.sql` with RLS), dual repository (Supabase production client + DevDatabaseRepository local persistent fallback), and Supabase connection tester (`testSupabaseConnection`).
+- [x] Implement `apps/api` Express backend with authentication middleware, project CRUD, story generation, script generation, scene breakdown, dynamic settings manager (`POST /api/settings`), and live connection testing for AI, ai33.pro voice, and Supabase.
+- [x] Implement `apps/web` desktop-first creative studio UI in React 18, Vite, Tailwind CSS, and Zustand (Dashboard, Projects, AI Story Studio, Script Editor, Scene Breakdown, and complete In-App Settings Manager with credential editing, password masks, and live connection testing for AI, ai33.pro, and Supabase).
+- [x] Automated test suites across all workspaces (66 tests passing: `@studio/types`: 12, `@studio/database`: 11, `@studio/ai-adapters`: 15, `apps/web`: 7, `apps/api`: 21).
+- [x] Monorepo code linting with ESLint v9 flat config verified across all packages with 0 errors.
+- [x] Monorepo strict typechecking (`tsc --noEmit`) verified across all packages with 0 errors.
+- [x] Production builds verified for both `apps/web` (`vite build`) and `apps/api` (`tsc`), plus Turborepo `turbo run build` across all packages (exit code 0).
+- [x] Live runtime probe verified against running local Express backend (health, project creation, story generation, script generation, scene breakdown, dynamic credential updates, and full project retrieval).
 
 ### Phase 2: Character Studio & 3D World Studio (Ready to Start)
 - [ ] Implement `@studio/3d-engine` procedural humanoid cartoon rig.

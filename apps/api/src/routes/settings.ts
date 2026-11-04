@@ -1,7 +1,8 @@
 import { Router, Request, Response } from 'express';
-import { isSupabaseConfigured } from '@studio/database';
-import { getAIAdapter } from '@studio/ai-adapters';
+import { isSupabaseConfigured, testSupabaseConnection } from '@studio/database';
+import { getAIAdapter, getVoiceAdapter } from '@studio/ai-adapters';
 import { AISettingsSchema, AIModelOption } from '@studio/types';
+import { settingsManager } from '../services/settingsManager';
 
 const router = Router();
 
@@ -44,29 +45,61 @@ const AVAILABLE_MODELS: AIModelOption[] = [
   },
 ];
 
-// GET /api/settings - Get current studio settings & connection statuses
-router.get('/', (_req: Request, res: Response) => {
+function buildSafeSettingsResponse() {
   const currentProvider = process.env.MOCK_AI === 'true' ? 'mock' : process.env.AI_PROVIDER || 'openrouter';
   const defaultModel = process.env.OPENROUTER_DEFAULT_MODEL || 'anthropic/claude-3.5-sonnet';
+  const voiceProvider = process.env.VOICE_PROVIDER || 'ai33';
+  const isDevDatabase = !isSupabaseConfigured();
 
+  return {
+    ai: {
+      provider: currentProvider,
+      model: defaultModel,
+      mockAi: process.env.MOCK_AI === 'true',
+      hasOpenRouterKey: Boolean(process.env.OPENROUTER_API_KEY && !process.env.OPENROUTER_API_KEY.includes('placeholder')),
+      hasOpenAIKey: Boolean(process.env.OPENAI_API_KEY && !process.env.OPENAI_API_KEY.includes('placeholder')),
+      hasAnthropicKey: Boolean(process.env.ANTHROPIC_API_KEY && !process.env.ANTHROPIC_API_KEY.includes('placeholder')),
+      baseUrl: process.env.OPENAI_BASE_URL || process.env.OPENROUTER_BASE_URL,
+    },
+    voice: {
+      provider: voiceProvider,
+      mockVoice: process.env.MOCK_VOICE === 'true',
+      hasAI33Key: Boolean(process.env.AI33_API_KEY && !process.env.AI33_API_KEY.includes('placeholder')),
+      baseUrl: process.env.AI33_BASE_URL || 'https://api.ai33.pro/v3',
+      defaultVoiceId: process.env.AI33_DEFAULT_VOICE_ID || 'minimax_male-qn-qingse',
+    },
+    database: {
+      isSupabaseConfigured: isSupabaseConfigured(),
+      mode: isDevDatabase ? 'dev' : 'supabase',
+      supabaseUrl: isSupabaseConfigured() ? process.env.SUPABASE_URL : undefined,
+    },
+    availableModels: AVAILABLE_MODELS,
+  };
+}
+
+// GET /api/settings - Get current studio settings & connection statuses (safe, secrets omitted)
+router.get('/', (_req: Request, res: Response) => {
   res.json({
     success: true,
-    data: {
-      ai: {
-        provider: currentProvider,
-        model: defaultModel,
-        mockAi: process.env.MOCK_AI === 'true',
-        hasOpenRouterKey: Boolean(process.env.OPENROUTER_API_KEY && !process.env.OPENROUTER_API_KEY.includes('placeholder')),
-        hasOpenAIKey: Boolean(process.env.OPENAI_API_KEY && !process.env.OPENAI_API_KEY.includes('placeholder')),
-        hasAnthropicKey: Boolean(process.env.ANTHROPIC_API_KEY && !process.env.ANTHROPIC_API_KEY.includes('placeholder')),
-      },
-      database: {
-        isSupabaseConfigured: isSupabaseConfigured(),
-        supabaseUrl: isSupabaseConfigured() ? process.env.SUPABASE_URL : undefined,
-      },
-      availableModels: AVAILABLE_MODELS,
-    },
+    data: buildSafeSettingsResponse(),
   });
+});
+
+// POST /api/settings - Save runtime settings (API keys & Supabase credentials)
+router.post('/', (req: Request, res: Response) => {
+  try {
+    settingsManager.updateSettings(req.body);
+    res.json({
+      success: true,
+      message: 'Studio settings updated successfully.',
+      data: buildSafeSettingsResponse(),
+    });
+  } catch (err: any) {
+    res.status(500).json({
+      success: false,
+      error: { code: 'SETTINGS_UPDATE_FAILED', message: err.message },
+    });
+  }
 });
 
 // POST /api/settings/test-connection - Test ping to chosen AI provider
@@ -89,5 +122,53 @@ router.post('/test-connection', async (req: Request, res: Response) => {
   });
 });
 
-export default router;
+// POST /api/settings/test-voice - Test ping to ai33.pro voice API
+router.post('/test-voice', async (req: Request, res: Response) => {
+  const { apiKey, baseUrl, provider } = req.body;
+  const start = Date.now();
 
+  try {
+    const voiceAdapter = getVoiceAdapter({
+      provider: provider || 'ai33',
+      apiKey,
+      baseUrl,
+      mockVoice: provider === 'mock' || !apiKey,
+    });
+
+    const result = await voiceAdapter.testConnection(apiKey);
+    const latency = Date.now() - start;
+
+    res.json({
+      success: true,
+      data: {
+        connected: result.connected,
+        provider: voiceAdapter.providerName,
+        message: result.message || 'Connected to voice engine successfully.',
+        latencyMs: latency,
+      },
+    });
+  } catch (err: any) {
+    res.json({
+      success: true,
+      data: {
+        connected: false,
+        provider: provider || 'ai33',
+        message: err.message || 'Failed to connect to voice engine.',
+        latencyMs: Date.now() - start,
+      },
+    });
+  }
+});
+
+// POST /api/settings/test-supabase - Test ping to Supabase credentials
+router.post('/test-supabase', async (req: Request, res: Response) => {
+  const { supabaseUrl, supabaseAnonKey } = req.body;
+  const result = await testSupabaseConnection({ supabaseUrl, supabaseAnonKey });
+
+  res.json({
+    success: true,
+    data: result,
+  });
+});
+
+export default router;

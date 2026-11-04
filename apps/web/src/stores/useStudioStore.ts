@@ -41,6 +41,20 @@ interface StudioState {
   availableModels: AIModelOption[];
   isSupabaseConfigured: boolean;
 
+  voiceSettings: {
+    provider: 'ai33' | 'mock';
+    apiKey?: string;
+    baseUrl?: string;
+    defaultVoiceId?: string;
+  };
+
+  supabaseSettings: {
+    mode: 'dev' | 'supabase';
+    supabaseUrl?: string;
+    supabaseAnonKey?: string;
+    supabaseServiceRoleKey?: string;
+  };
+
   // Loading & Error States
   isGeneratingStory: boolean;
   isGeneratingScript: boolean;
@@ -56,6 +70,9 @@ interface StudioState {
   setNotification: (notif: { type: 'success' | 'error' | 'info'; message: string } | null) => void;
   setStoryPromptOptions: (options: Partial<StoryPromptOptions>) => void;
   setAiSettings: (settings: Partial<AISettings>) => void;
+  setVoiceSettings: (settings: Partial<StudioState['voiceSettings']>) => void;
+  setSupabaseSettings: (settings: Partial<StudioState['supabaseSettings']>) => void;
+  saveAllStudioSettings: () => Promise<void>;
 
   // Project Actions
   fetchProjects: () => Promise<void>;
@@ -116,6 +133,19 @@ export const useStudioStore = create<StudioState>((set, get) => ({
   availableModels: [],
   isSupabaseConfigured: false,
 
+  voiceSettings: {
+    provider: 'ai33',
+    baseUrl: 'https://api.ai33.pro/v3',
+    defaultVoiceId: 'minimax_male-qn-qingse',
+  },
+
+  supabaseSettings: {
+    mode: 'dev',
+    supabaseUrl: '',
+    supabaseAnonKey: '',
+    supabaseServiceRoleKey: '',
+  },
+
   isGeneratingStory: false,
   isGeneratingScript: false,
   isBreakingDownScenes: false,
@@ -131,6 +161,53 @@ export const useStudioStore = create<StudioState>((set, get) => ({
     set((state) => ({ storyPromptOptions: { ...state.storyPromptOptions, ...options } })),
   setAiSettings: (settings) =>
     set((state) => ({ aiSettings: { ...state.aiSettings, ...settings } })),
+  setVoiceSettings: (settings) =>
+    set((state) => ({ voiceSettings: { ...state.voiceSettings, ...settings } })),
+  setSupabaseSettings: (settings) =>
+    set((state) => ({ supabaseSettings: { ...state.supabaseSettings, ...settings } })),
+
+  saveAllStudioSettings: async () => {
+    set({ isSaving: true });
+    try {
+      const { aiSettings, voiceSettings, supabaseSettings } = get();
+      const payload = {
+        ai: {
+          provider: aiSettings.provider,
+          model: aiSettings.model,
+          apiKey: aiSettings.apiKey,
+          baseUrl: aiSettings.baseUrl,
+          mockAi: aiSettings.provider === 'mock',
+        },
+        voice: {
+          provider: voiceSettings.provider,
+          apiKey: voiceSettings.apiKey,
+          baseUrl: voiceSettings.baseUrl,
+          defaultVoiceId: voiceSettings.defaultVoiceId,
+          mockVoice: voiceSettings.provider === 'mock',
+        },
+        database: {
+          mode: supabaseSettings.mode,
+          supabaseUrl: supabaseSettings.supabaseUrl,
+          supabaseAnonKey: supabaseSettings.supabaseAnonKey,
+          supabaseServiceRoleKey: supabaseSettings.supabaseServiceRoleKey,
+        },
+      };
+
+      const res = await api.saveSettings(payload);
+      if (res?.data) {
+        set({
+          isSupabaseConfigured: res.data.database?.isSupabaseConfigured ?? false,
+          notification: { type: 'success', message: 'All studio settings & credentials saved successfully.' },
+        });
+      }
+    } catch (err: any) {
+      set({
+        notification: { type: 'error', message: err.message || 'Failed to save settings.' },
+      });
+    } finally {
+      set({ isSaving: false });
+    }
+  },
 
   initStudio: async () => {
     try {
@@ -151,6 +228,16 @@ export const useStudioStore = create<StudioState>((set, get) => ({
             provider: settingsRes.ai?.provider || 'openrouter',
             model: settingsRes.ai?.model || 'anthropic/claude-3.5-sonnet',
             mockAi: settingsRes.ai?.mockAi ?? false,
+          },
+          voiceSettings: {
+            provider: settingsRes.voice?.provider || 'ai33',
+            baseUrl: settingsRes.voice?.baseUrl || 'https://api.ai33.pro/v3',
+            defaultVoiceId: settingsRes.voice?.defaultVoiceId || 'minimax_male-qn-qingse',
+          },
+          supabaseSettings: {
+            mode: settingsRes.database?.mode || (settingsRes.database?.isSupabaseConfigured ? 'supabase' : 'dev'),
+            supabaseUrl: settingsRes.database?.supabaseUrl || '',
+            supabaseAnonKey: '',
           },
         });
       }

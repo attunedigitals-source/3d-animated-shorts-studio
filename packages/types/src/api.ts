@@ -20,3 +20,41 @@ export interface TestConnectionResponse {
   message: string;
 }
 
+export interface TestSupabaseResponse {
+  connected: boolean;
+  message: string;
+  latencyMs: number;
+  url?: string;
+}
+
+export interface TestVoiceResponse {
+  connected: boolean;
+  provider: string;
+  message: string;
+  latencyMs: number;
+  sampleVoices?: string[];
+}
+
+export interface StudioSettingsPayload {
+  ai?: {
+    provider?: 'openrouter' | 'openai' | 'anthropic' | 'mock';
+    model?: string;
+    apiKey?: string;
+    baseUrl?: string;
+    mockAi?: boolean;
+  };
+  voice?: {
+    provider?: 'ai33' | 'mock';
+    apiKey?: string;
+    baseUrl?: string;
+    defaultVoiceId?: string;
+    mockVoice?: boolean;
+  };
+  database?: {
+    mode?: 'dev' | 'supabase';
+    supabaseUrl?: string;
+    supabaseAnonKey?: string;
+    supabaseServiceRoleKey?: string;
+  };
+}
+
