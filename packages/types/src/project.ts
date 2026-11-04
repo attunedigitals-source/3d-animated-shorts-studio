@@ -64,3 +64,5 @@ export interface FullProjectDetails extends ProjectSummary {
   scenes: StructuredScene[];
 }
 
+export type Project = ProjectSummary;
+

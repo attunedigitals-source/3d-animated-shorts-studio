@@ -40,3 +40,5 @@ export interface SceneRecord extends StructuredScene {
   updatedAt: string;
 }
 
+export type Scene = StructuredScene;
+
