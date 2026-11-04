@@ -22,23 +22,29 @@ class ApiService {
   private devUserId: string = 'dev-user-001';
 
   constructor() {
-    this.token = localStorage.getItem('studio_auth_token');
-    const storedDevId = localStorage.getItem('studio_dev_user_id');
-    if (storedDevId) this.devUserId = storedDevId;
+    if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+      this.token = localStorage.getItem('studio_auth_token');
+      const storedDevId = localStorage.getItem('studio_dev_user_id');
+      if (storedDevId) this.devUserId = storedDevId;
+    }
   }
 
   setToken(token: string | null) {
     this.token = token;
-    if (token) {
-      localStorage.setItem('studio_auth_token', token);
-    } else {
-      localStorage.removeItem('studio_auth_token');
+    if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+      if (token) {
+        localStorage.setItem('studio_auth_token', token);
+      } else {
+        localStorage.removeItem('studio_auth_token');
+      }
     }
   }
 
   setDevUserId(userId: string) {
     this.devUserId = userId;
-    localStorage.setItem('studio_dev_user_id', userId);
+    if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+      localStorage.setItem('studio_dev_user_id', userId);
+    }
   }
 
   getDevUserId(): string {

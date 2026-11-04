@@ -34,16 +34,18 @@ This document tracks the live implementation status of the 3D Animated Shorts St
 - [x] Root environment template created (`.env.example`).
 - [x] Package manifests and base TypeScript configurations created.
 
-### Phase 1: Project Foundation & AI Story Engine (Completed)
+### Phase 1: Project Foundation & AI Story Engine (Completed & Verified)
 - [x] Install base dependencies across workspaces (`pnpm install`).
-- [x] Implement `@studio/types` domain models and Zod schemas (`StoryPromptOptionsSchema`, `StoryDocumentSchema`, `ScriptDocumentSchema`, `StructuredSceneSchema`, `CreateProjectSchema`).
-- [x] Implement `@studio/ai-adapters` (OpenRouter, OpenAI-compatible, Anthropic, Mock AI adapter, markdown-fence-stripping JSON parser).
+- [x] Implement `@studio/types` domain models and Zod schemas (`StoryPromptOptionsSchema`, `StoryDocumentSchema`, `ScriptDocumentSchema`, `StructuredSceneSchema`, `CreateProjectSchema`, `AI33VoiceSchema`, `AI33DialogueRequestSchema`).
+- [x] Implement `@studio/ai-adapters` (OpenRouter, OpenAI-compatible, Anthropic, Mock AI adapter, markdown-fence-stripping JSON parser, ai33.pro voice adapter).
 - [x] Implement `@studio/database` schema migration scripts (`001_phase1_schema.sql` with RLS) and dual repository (Supabase production client + DevDatabaseRepository local persistent fallback).
 - [x] Implement `apps/api` Express backend with authentication middleware, project CRUD, story generation, script generation, scene breakdown, and safe settings endpoints.
 - [x] Implement `apps/web` desktop-first creative studio UI in React 18, Vite, Tailwind CSS, and Zustand (Dashboard, Projects, AI Story Studio, Script Editor, Scene Breakdown, Settings, Auth modal).
-- [x] Unit test suites for `@studio/types` (8 tests passing) and `@studio/ai-adapters` (10 tests passing).
-- [x] End-to-end integration test suite for `apps/api` (18 tests passing covering auth, user isolation, project CRUD, AI story generation, script conversion, scene breakdown, and single scene updates).
-- [x] Production builds verified for both `apps/web` (`vite build`) and `apps/api` (`tsc`).
+- [x] Automated test suites across all workspaces (62 tests passing: `@studio/types`: 12, `@studio/database`: 11, `@studio/ai-adapters`: 15, `apps/web`: 6, `apps/api`: 18).
+- [x] Monorepo code linting with ESLint v9 flat config verified across all 9 packages with 0 errors.
+- [x] Monorepo strict typechecking (`tsc --noEmit`) verified across all 9 packages with 0 errors.
+- [x] Production builds verified for both `apps/web` (`vite build`) and `apps/api` (`tsc`), plus Turborepo `turbo run build` across all 9 packages (exit code 0).
+- [x] Live runtime probe verified against running local Express backend (health, project creation, story generation, script generation, scene breakdown, and full project retrieval).
 
 ### Phase 2: Character Studio & 3D World Studio (Ready to Start)
 - [ ] Implement `@studio/3d-engine` procedural humanoid cartoon rig.
@@ -104,3 +106,5 @@ This document tracks the live implementation status of the 3D Animated Shorts St
 | 2026-11-04 | Lead Architect | Phase 0 initialization completed. Established project layout, environment configs, package manifests, and comprehensive architectural documentation. |
 | 2026-11-04 | Lead Architect | Post-initialization review and hardening: added tsconfig.json across all packages and apps, added standardized package scripts matching turbo.json pipelines, updated .gitignore with storage and bundler caches, and expanded deep-dive architecture specs for all 9 core subsystems. |
 | 2026-11-04 | Lead Architect | Phase 1 implementation completed: Built `@studio/types`, `@studio/ai-adapters`, `@studio/database`, `apps/api`, and `apps/web`. Added 36 automated unit and integration tests across workspaces with 100% pass rate. Verified clean compilation and production builds. |
+| 2026-11-04 | Lead Architect | Integrated ai33.pro Unified v3 Voice API (TTS, multi-speaker dialogue, voice library, cloning, pronunciation dictionaries). Exported Project/Scene aliases for @studio/video-compositor. Configured root vercel.json. |
+| 2026-11-04 | Lead Architect | Independent Phase 1 Audit: Added unit test suites for @studio/database (11 tests) and @studio/web (6 tests), bringing total test count to 62 tests (100% passing). Configured ESLint v9 flat config with typescript-eslint. Added safe localStorage guards for SSR/Node. Executed end-to-end live runtime probe against running Express server. |
