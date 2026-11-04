@@ -339,6 +339,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
         storyPromptOptions: {
           ...get().storyPromptOptions,
           title: project.title,
+          topic: get().storyPromptOptions.topic?.trim() || project.description?.trim() || project.title || '',
           category: project.preferences.category,
           targetDurationSeconds: project.preferences.targetDurationSeconds,
           intendedAudience: project.preferences.intendedAudience,
@@ -370,6 +371,13 @@ export const useStudioStore = create<StudioState>((set, get) => ({
           fps: 30,
         },
       });
+      set((state) => ({
+        storyPromptOptions: {
+          ...state.storyPromptOptions,
+          title,
+          topic: state.storyPromptOptions.topic?.trim() || description || title,
+        },
+      }));
       await get().fetchProjects();
       await get().selectProject(created.id);
       return created.id;
@@ -418,11 +426,18 @@ export const useStudioStore = create<StudioState>((set, get) => ({
   // Story
   generateStory: async () => {
     let current = get().currentProject;
-    const opts = get().storyPromptOptions;
+    const opts = { ...get().storyPromptOptions };
 
+    // Auto-resolve concept if topic is empty or too short, but title or project title is available
     if (!opts.topic || opts.topic.trim().length < 3) {
-      set({ notification: { type: 'error', message: 'Please enter a story concept with at least 3 characters.' } });
-      return;
+      const fallbackTopic = opts.title?.trim() || current?.title?.trim() || current?.description?.trim();
+      if (fallbackTopic && fallbackTopic.length >= 3) {
+        opts.topic = fallbackTopic;
+        set((state) => ({ storyPromptOptions: { ...state.storyPromptOptions, topic: fallbackTopic } }));
+      } else {
+        set({ notification: { type: 'error', message: 'Please enter a story concept with at least 3 characters.' } });
+        return;
+      }
     }
 
     // Auto-create project if none selected
