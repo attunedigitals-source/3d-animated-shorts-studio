@@ -37,8 +37,28 @@ export default function App() {
     }
   };
 
+  const isPreviewUrl =
+    typeof window !== 'undefined' &&
+    window.location.hostname.includes('-projects.vercel.app');
+
   return (
     <div className="flex flex-col h-screen bg-slate-950 text-slate-100 overflow-hidden font-sans select-none antialiased">
+      {/* Notice if viewing immutable preview snapshot */}
+      {isPreviewUrl && (
+        <div className="bg-amber-500 text-slate-950 px-4 py-2 text-xs font-bold flex items-center justify-between shadow-md z-50 shrink-0">
+          <div className="flex items-center gap-2">
+            <span>⚠️ You are on an immutable preview deployment snapshot.</span>
+            <span className="hidden sm:inline font-normal">New updates are deployed to the main production URL.</span>
+          </div>
+          <a
+            href="https://3d-animated-shorts-studio-h9wa.vercel.app"
+            className="px-3 py-1 bg-slate-950 text-amber-400 rounded hover:bg-slate-900 transition font-extrabold text-[11px]"
+          >
+            Switch to Live Production Studio →
+          </a>
+        </div>
+      )}
+
       {/* Top Studio Header */}
       <Header />
 

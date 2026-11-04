@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef } from 'react';
 import { useStudioStore } from '../../stores/useStudioStore';
 import {
   Sparkles,
@@ -32,7 +32,12 @@ export const StoryStudioView: React.FC = () => {
   } = useStudioStore();
 
   const topicInputRef = useRef<HTMLTextAreaElement>(null);
-  const [highlightTopic, setHighlightTopic] = useState(false);
+
+  const samplePrompts = [
+    { title: 'Dragon Sneeze', topic: 'A tiny dragon who can only sneeze glitter discovers his spark saves the kingdom.' },
+    { title: 'Robot Chef', topic: 'A clumsy robot chef tries to bake the fluffiest pancake with chaotic results.' },
+    { title: 'Neon Squirrel', topic: 'A cyberpunk squirrel hacks into an automated acorn vault in Neo-Tokyo.' },
+  ];
 
   const categories = ['Comedy', 'Adventure', 'Whimsical', 'Sci-Fi', 'Action', 'Slice of Life', 'Mystery'];
   const tones = ['Humorous and Whimsical', 'High Energy Slapstick', 'Heartwarming and Cute', 'Epic & Adventurous', 'Quirky & Absurd'];
@@ -40,23 +45,17 @@ export const StoryStudioView: React.FC = () => {
   const durations = [15, 30, 45, 60, 90];
 
   const handleGenerate = async () => {
-    const rawTopic = storyPromptOptions.topic?.trim() || '';
+    let rawTopic = storyPromptOptions.topic?.trim() || '';
     const fallbackTitle = storyPromptOptions.title?.trim() || currentProject?.title?.trim() || currentProject?.description?.trim() || '';
 
-    // If topic is empty, try using title or project title
+    // If topic is empty, try using title or fallback to a creative default prompt
     if (!rawTopic) {
       if (fallbackTitle && fallbackTitle.length >= 3) {
+        rawTopic = fallbackTitle;
         setStoryPromptOptions({ topic: fallbackTitle });
       } else {
-        setNotification({
-          type: 'info',
-          message: 'Please enter a story concept or core idea (min 3 characters) to generate your story.',
-        });
-        setHighlightTopic(true);
-        setTimeout(() => setHighlightTopic(false), 3000);
-        topicInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        topicInputRef.current?.focus();
-        return;
+        rawTopic = 'A tiny dragon who can only sneeze glitter discovers his spark saves the kingdom.';
+        setStoryPromptOptions({ topic: rawTopic, title: 'The Glitter Dragon' });
       }
     } else if (rawTopic.length < 3) {
       setNotification({
@@ -67,7 +66,14 @@ export const StoryStudioView: React.FC = () => {
       return;
     }
 
-    await generateStory();
+    try {
+      await generateStory();
+    } catch (err: any) {
+      setNotification({
+        type: 'error',
+        message: err.message || 'Story generation failed. Please check your AI API key in Settings.',
+      });
+    }
   };
 
   return (
@@ -121,11 +127,29 @@ export const StoryStudioView: React.FC = () => {
 
           <div className="space-y-4">
             {/* Story Topic / Idea */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-300 flex items-center justify-between">
-                <span>Story Concept / Core Idea *</span>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-semibold text-slate-300">
+                  Story Concept / Core Idea *
+                </label>
                 <span className="text-[10px] text-slate-500">Min 3 characters</span>
-              </label>
+              </div>
+
+              {/* Quick Idea Starters */}
+              <div className="flex flex-wrap items-center gap-1.5 pb-0.5">
+                <span className="text-[10px] text-slate-500">Quick ideas:</span>
+                {samplePrompts.map((p) => (
+                  <button
+                    key={p.title}
+                    type="button"
+                    onClick={() => setStoryPromptOptions({ topic: p.topic, title: p.title })}
+                    className="text-[10px] px-2 py-0.5 rounded-md bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-indigo-500/50 text-slate-300 hover:text-white transition"
+                  >
+                    + {p.title}
+                  </button>
+                ))}
+              </div>
+
               <textarea
                 ref={topicInputRef}
                 rows={3}
@@ -133,11 +157,7 @@ export const StoryStudioView: React.FC = () => {
                 placeholder="e.g. A clumsy robot chef tries to bake the world's fluffiest pancake with chaotic results..."
                 value={storyPromptOptions.topic}
                 onChange={(e) => setStoryPromptOptions({ topic: e.target.value })}
-                className={`w-full bg-slate-950 border rounded-xl p-3 text-xs text-white placeholder-slate-500 focus:outline-none resize-none leading-relaxed transition ${
-                  highlightTopic
-                    ? 'border-indigo-400 ring-2 ring-indigo-500/40'
-                    : 'border-slate-800 focus:border-indigo-500'
-                }`}
+                className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 rounded-xl p-3 text-xs text-white placeholder-slate-500 focus:outline-none resize-none leading-relaxed transition"
               />
             </div>
 
@@ -287,23 +307,20 @@ export const StoryStudioView: React.FC = () => {
             </div>
 
             {/* Generate Action Button */}
-            <div className="space-y-2 pt-1">
+            <div className="space-y-2 pt-2">
               <button
                 type="button"
                 onClick={handleGenerate}
                 disabled={isGeneratingStory}
-                className="w-full py-3.5 rounded-xl bg-gradient-to-r from-indigo-600 via-indigo-500 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-bold text-sm shadow-xl shadow-indigo-600/25 flex items-center justify-center gap-2 transition active:scale-[0.98] disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
+                className={`w-full py-3.5 px-4 rounded-xl font-bold text-sm shadow-xl flex items-center justify-center gap-2 transition active:scale-[0.98] ${
+                  isGeneratingStory
+                    ? 'bg-indigo-900/60 text-indigo-300 border border-indigo-700/50 cursor-not-allowed opacity-80'
+                    : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-600/30 border border-indigo-400/40 hover:border-indigo-300 cursor-pointer'
+                }`}
               >
-                <Sparkles className={`w-4 h-4 ${isGeneratingStory ? 'animate-spin' : ''}`} />
-                {isGeneratingStory ? 'Generating Original Story...' : storyDraft ? 'Regenerate Story' : 'Generate 3D Short Story'}
+                <Sparkles className={`w-4 h-4 ${isGeneratingStory ? 'animate-spin text-indigo-300' : 'text-white'}`} />
+                {isGeneratingStory ? 'Generating Original Story (10-20s)...' : storyDraft ? 'Regenerate Story' : 'Generate 3D Short Story'}
               </button>
-
-              {!storyPromptOptions.topic?.trim() && !storyPromptOptions.title?.trim() && !currentProject?.title?.trim() && (
-                <p className="text-[11px] text-amber-400/90 text-center flex items-center justify-center gap-1.5 pt-0.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
-                  Enter your story concept above to generate
-                </p>
-              )}
             </div>
           </div>
         </div>
