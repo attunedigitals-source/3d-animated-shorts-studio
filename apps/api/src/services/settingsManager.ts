@@ -62,7 +62,11 @@ class SettingsManager {
   private applyToEnvironment(): void {
     if (this.settings.ai) {
       if (this.settings.ai.provider) process.env.AI_PROVIDER = this.settings.ai.provider;
-      if (this.settings.ai.model) process.env.OPENROUTER_DEFAULT_MODEL = this.settings.ai.model;
+      if (this.settings.ai.model) {
+        process.env.OPENROUTER_DEFAULT_MODEL = this.settings.ai.model;
+        process.env.OPENAI_DEFAULT_MODEL = this.settings.ai.model;
+        process.env.ANTHROPIC_DEFAULT_MODEL = this.settings.ai.model;
+      }
       if (this.settings.ai.mockAi !== undefined) process.env.MOCK_AI = String(this.settings.ai.mockAi);
 
       if (this.settings.ai.apiKey) {

@@ -37,6 +37,27 @@ const AVAILABLE_MODELS: AIModelOption[] = [
     recommendedFor: ['story', 'script'],
   },
   {
+    id: 'gpt-4o',
+    name: 'GPT-4o (Direct OpenAI)',
+    provider: 'openai',
+    contextWindow: 128000,
+    recommendedFor: ['story', 'script', 'scenes'],
+  },
+  {
+    id: 'gpt-4o-mini',
+    name: 'GPT-4o Mini (Direct OpenAI)',
+    provider: 'openai',
+    contextWindow: 128000,
+    recommendedFor: ['story', 'script', 'scenes'],
+  },
+  {
+    id: 'claude-3-5-sonnet-20241022',
+    name: 'Claude 3.5 Sonnet (Direct Anthropic)',
+    provider: 'anthropic',
+    contextWindow: 200000,
+    recommendedFor: ['story', 'script', 'scenes'],
+  },
+  {
     id: 'deterministic-mock-v1',
     name: 'Offline Mock AI Engine (Deterministic)',
     provider: 'mock',

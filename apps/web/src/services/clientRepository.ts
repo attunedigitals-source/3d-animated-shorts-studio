@@ -23,6 +23,8 @@ import {
 } from '@studio/types';
 import {
   OpenRouterAIAdapter,
+  OpenAICompatibleAdapter,
+  AnthropicAIAdapter,
   MockAIAdapter,
   IAIProviderAdapter,
 } from '@studio/ai-adapters';
@@ -356,11 +358,27 @@ export class ClientRepository {
   // ----------------------------------------------------
 
   private getAIAdapterInstance(settings?: Partial<AISettings>): IAIProviderAdapter {
-    const provider = settings?.provider || 'openrouter';
-    const apiKey = settings?.apiKey || '';
+    let effectiveSettings = { ...settings };
+    if ((!effectiveSettings.apiKey || !effectiveSettings.provider) && typeof localStorage !== 'undefined') {
+      try {
+        const stored = JSON.parse(localStorage.getItem('studio_ai_settings') || '{}');
+        effectiveSettings = { ...stored, ...effectiveSettings };
+      } catch {}
+    }
+
+    const provider = effectiveSettings.provider || 'openrouter';
+    const apiKey = effectiveSettings.apiKey?.trim() || '';
 
     if (provider === 'mock' || !apiKey || apiKey.includes('placeholder')) {
       return new MockAIAdapter();
+    }
+
+    if (provider === 'openai') {
+      return new OpenAICompatibleAdapter();
+    }
+
+    if (provider === 'anthropic') {
+      return new AnthropicAIAdapter();
     }
 
     return new OpenRouterAIAdapter();
@@ -371,8 +389,16 @@ export class ClientRepository {
     options: StoryPromptOptions,
     settings?: Partial<AISettings>,
   ): Promise<{ story: StoryRecord }> {
-    const adapter = this.getAIAdapterInstance(settings);
-    const { story } = await adapter.generateStory(options, settings);
+    let effectiveSettings = { ...settings };
+    if ((!effectiveSettings.apiKey || !effectiveSettings.provider) && typeof localStorage !== 'undefined') {
+      try {
+        const stored = JSON.parse(localStorage.getItem('studio_ai_settings') || '{}');
+        effectiveSettings = { ...stored, ...effectiveSettings };
+      } catch {}
+    }
+
+    const adapter = this.getAIAdapterInstance(effectiveSettings);
+    const { story } = await adapter.generateStory(options, effectiveSettings);
 
     const now = new Date().toISOString();
     const record: StoryRecord = {
@@ -445,13 +471,21 @@ export class ClientRepository {
     targetDurationSeconds: number = 30,
     settings?: Partial<AISettings>,
   ): Promise<{ script: ScriptRecord }> {
+    let effectiveSettings = { ...settings };
+    if ((!effectiveSettings.apiKey || !effectiveSettings.provider) && typeof localStorage !== 'undefined') {
+      try {
+        const stored = JSON.parse(localStorage.getItem('studio_ai_settings') || '{}');
+        effectiveSettings = { ...stored, ...effectiveSettings };
+      } catch {}
+    }
+
     const project = await this.getProject(projectId);
     if (!project.story) {
       throw new Error('Please create or load an approved story before generating a script.');
     }
 
-    const adapter = this.getAIAdapterInstance(settings);
-    const { script } = await adapter.generateScript(project.story, targetDurationSeconds, settings);
+    const adapter = this.getAIAdapterInstance(effectiveSettings);
+    const { script } = await adapter.generateScript(project.story, targetDurationSeconds, effectiveSettings);
 
     const now = new Date().toISOString();
     const record: ScriptRecord = {
@@ -511,13 +545,21 @@ export class ClientRepository {
   }
 
   async breakdownScenes(projectId: string, settings?: Partial<AISettings>): Promise<{ scenes: StructuredScene[] }> {
+    let effectiveSettings = { ...settings };
+    if ((!effectiveSettings.apiKey || !effectiveSettings.provider) && typeof localStorage !== 'undefined') {
+      try {
+        const stored = JSON.parse(localStorage.getItem('studio_ai_settings') || '{}');
+        effectiveSettings = { ...stored, ...effectiveSettings };
+      } catch {}
+    }
+
     const project = await this.getProject(projectId);
     if (!project.script) {
       throw new Error('Please create or load an approved script before breaking down scenes.');
     }
 
-    const adapter = this.getAIAdapterInstance(settings);
-    const { scenes } = await adapter.breakdownScenes(project.script, project.story, settings);
+    const adapter = this.getAIAdapterInstance(effectiveSettings);
+    const { scenes } = await adapter.breakdownScenes(project.script, project.story, effectiveSettings);
 
     await this.saveScenes(projectId, scenes);
     return { scenes };

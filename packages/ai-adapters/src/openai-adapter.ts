@@ -28,7 +28,13 @@ export class OpenAICompatibleAdapter implements IAIProviderAdapter {
   private resolveConfig(settings?: Partial<AISettings>) {
     const apiKey = settings?.apiKey || getEnv('OPENAI_API_KEY') || 'no-key-required';
     const baseUrl = settings?.baseUrl || getEnv('OPENAI_BASE_URL') || 'https://api.openai.com/v1';
-    const model = settings?.model || getEnv('OPENAI_DEFAULT_MODEL') || 'gpt-4o';
+    let model = settings?.model || getEnv('OPENAI_DEFAULT_MODEL') || 'gpt-4o';
+
+    // Guard: If pointing to official OpenAI API and model has OpenRouter/Anthropic format or invalid prefix, default to gpt-4o
+    if (baseUrl.includes('api.openai.com') && (model.includes('/') || model.includes('claude') || model.includes('llama') || model.includes('gemini') || model.includes('mock'))) {
+      model = 'gpt-4o';
+    }
+
     const timeoutMs = settings?.timeoutMs || Number(getEnv('AI_REQUEST_TIMEOUT_MS')) || 60000;
     const temperature = settings?.temperature ?? 0.7;
 

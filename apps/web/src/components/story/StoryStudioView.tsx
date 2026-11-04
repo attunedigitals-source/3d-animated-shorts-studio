@@ -10,6 +10,7 @@ import {
   Clock,
   Layers,
   Heart,
+  Cpu,
 } from 'lucide-react';
 
 export const StoryStudioView: React.FC = () => {
@@ -209,19 +210,42 @@ export const StoryStudioView: React.FC = () => {
             {/* Model Selector */}
             <div className="space-y-1.5 pt-2 border-t border-slate-800/80">
               <label className="text-xs font-semibold text-slate-300 flex items-center justify-between">
-                <span>AI Model</span>
-                <span className="text-[10px] text-indigo-400 capitalize">{aiSettings.provider || 'openrouter'}</span>
+                <span className="flex items-center gap-1.5">
+                  <Cpu className="w-3.5 h-3.5 text-indigo-400" />
+                  AI Model
+                </span>
+                <span className="text-[10px] text-indigo-400 font-mono bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20 capitalize">
+                  {aiSettings.provider || 'openrouter'}
+                </span>
               </label>
               <select
                 value={aiSettings.model}
-                onChange={(e) => setAiSettings({ model: e.target.value })}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  const matched = availableModels.find((m) => m.id === val);
+                  if (matched && matched.provider) {
+                    setAiSettings({ model: val, provider: matched.provider });
+                  } else {
+                    setAiSettings({ model: val });
+                  }
+                }}
                 className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
               >
-                {availableModels.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.name}
-                  </option>
-                ))}
+                {availableModels
+                  .filter((m) => !aiSettings.provider || m.provider === aiSettings.provider)
+                  .map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.name}
+                    </option>
+                  ))}
+                {aiSettings.model &&
+                  !availableModels.some(
+                    (m) => m.id === aiSettings.model && (!aiSettings.provider || m.provider === aiSettings.provider)
+                  ) && (
+                    <option value={aiSettings.model}>
+                      {aiSettings.model} (Custom)
+                    </option>
+                  )}
               </select>
             </div>
 

@@ -399,6 +399,7 @@ class ApiService {
           { id: 'google/gemini-2.0-flash-exp:free', name: 'Gemini 2.0 Flash (Free)', provider: 'openrouter', tier: 'fast', description: 'Zero-cost high-speed narrative generation' },
           { id: 'claude-3-5-sonnet-20241022', name: 'Claude 3.5 Sonnet (Direct)', provider: 'anthropic', tier: 'flagship', description: 'Direct Anthropic Claude integration' },
           { id: 'gpt-4o', name: 'GPT-4o (Direct)', provider: 'openai', tier: 'flagship', description: 'Direct OpenAI GPT-4o' },
+          { id: 'gpt-4o-mini', name: 'GPT-4o Mini (Direct)', provider: 'openai', tier: 'fast', description: 'Fast, cost-efficient direct OpenAI model' },
           { id: 'mock-story-v1', name: 'Mock Engine V1', provider: 'mock', tier: 'mock', description: 'Instant offline deterministic responses' },
         ],
       };

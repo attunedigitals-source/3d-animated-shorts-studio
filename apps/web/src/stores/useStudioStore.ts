@@ -160,11 +160,29 @@ export const useStudioStore = create<StudioState>((set, get) => ({
   setStoryPromptOptions: (options) =>
     set((state) => ({ storyPromptOptions: { ...state.storyPromptOptions, ...options } })),
   setAiSettings: (settings) =>
-    set((state) => ({ aiSettings: { ...state.aiSettings, ...settings } })),
+    set((state) => {
+      const next = { ...state.aiSettings, ...settings };
+      if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+        localStorage.setItem('studio_ai_settings', JSON.stringify(next));
+      }
+      return { aiSettings: next };
+    }),
   setVoiceSettings: (settings) =>
-    set((state) => ({ voiceSettings: { ...state.voiceSettings, ...settings } })),
+    set((state) => {
+      const next = { ...state.voiceSettings, ...settings };
+      if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+        localStorage.setItem('studio_voice_settings', JSON.stringify(next));
+      }
+      return { voiceSettings: next };
+    }),
   setSupabaseSettings: (settings) =>
-    set((state) => ({ supabaseSettings: { ...state.supabaseSettings, ...settings } })),
+    set((state) => {
+      const next = { ...state.supabaseSettings, ...settings };
+      if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+        localStorage.setItem('studio_supabase_settings', JSON.stringify(next));
+      }
+      return { supabaseSettings: next };
+    }),
 
   saveAllStudioSettings: async () => {
     set({ isSaving: true });
@@ -285,6 +303,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
           { id: 'google/gemini-2.0-flash-exp:free', name: 'Gemini 2.0 Flash (Free)', provider: 'openrouter', tier: 'fast', description: 'Zero-cost high-speed narrative generation' },
           { id: 'claude-3-5-sonnet-20241022', name: 'Claude 3.5 Sonnet (Direct)', provider: 'anthropic', tier: 'flagship', description: 'Direct Anthropic Claude integration' },
           { id: 'gpt-4o', name: 'GPT-4o (Direct)', provider: 'openai', tier: 'flagship', description: 'Direct OpenAI GPT-4o' },
+          { id: 'gpt-4o-mini', name: 'GPT-4o Mini (Direct)', provider: 'openai', tier: 'fast', description: 'Fast, cost-efficient direct OpenAI model' },
           { id: 'mock-story-v1', name: 'Mock Engine V1', provider: 'mock', tier: 'mock', description: 'Instant offline deterministic responses' },
         ],
       });
