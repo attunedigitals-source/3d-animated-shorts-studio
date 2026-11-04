@@ -7,7 +7,7 @@ An AI-powered 3D animated video production studio that enables creators to gener
 ## Architecture Highlights
 - **Real 3D Animation:** Three.js and React Three Fiber power actual 3D character rigs, environments, lighting, and camera paths.
 - **Dedicated Rendering Worker:** Heavy video composition, offscreen WebGL rendering, and FFmpeg encoding run exclusively on background workers using BullMQ and Redis.
-- **Provider-Agnostic AI & Voice:** Pluggable adapters supporting OpenRouter, OpenAI, Anthropic, ElevenLabs, and deterministic offline mock engines.
+- **Provider-Agnostic AI & Voice:** Pluggable adapters supporting OpenRouter, OpenAI, Anthropic, ai33.pro Unified v3 Voice API (ElevenLabs, Minimax, Clone, Edge, Kokoro, Vbee, FishAudio), and deterministic offline mock engines.
 - **Persistent Asset & Project Management:** Supabase database and flexible storage adapters (local filesystem, Supabase Storage, S3).
 - **Safe Secrets Architecture:** Zero private provider API keys or service tokens are exposed to client-side bundles.
 
@@ -55,6 +55,6 @@ An AI-powered 3D animated video production studio that enables creators to gener
 ---
 
 ## Status
-- **Current Phase:** Phase 0 (Initialization & Architecture) — **Completed**.
-- **Next Phase:** Phase 1 (Project Foundation and AI Story Engine) — **Pending user approval**.
+- **Current Phase:** Phase 1 (Project Foundation and AI Story Engine) — **Completed (100%)**.
+- **Next Phase:** Phase 2 (Character Studio and 3D World Studio) — **Ready to start**.
 

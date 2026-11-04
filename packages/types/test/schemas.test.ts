@@ -5,6 +5,9 @@ import {
   ScriptDocumentSchema,
   StructuredSceneSchema,
   CreateProjectSchema,
+  AI33TTSRequestSchema,
+  AI33DialogueRequestSchema,
+  AI33PronunciationRuleSchema,
 } from '../src';
 
 describe('Domain Schemas & Validation', () => {
@@ -136,6 +139,55 @@ describe('Domain Schemas & Validation', () => {
       const invalid = { title: '' };
       const result = CreateProjectSchema.safeParse(invalid);
       expect(result.success).toBe(false);
+    });
+  });
+
+  describe('ai33.pro Voice Schemas', () => {
+    it('should validate single TTS request with provider prefix', () => {
+      const valid = {
+        voice_id: 'minimax_male-qn-qingse',
+        text: 'Hello, this is a test from 3D Animated Shorts Studio.',
+        speed: 1.1,
+      };
+      const parsed = AI33TTSRequestSchema.parse(valid);
+      expect(parsed.voice_id).toBe('minimax_male-qn-qingse');
+      expect(parsed.speed).toBe(1.1);
+      expect(parsed.with_transcript).toBe(false);
+    });
+
+    it('should validate multi-speaker dialogue request with labels and speaker array', () => {
+      const validDialogue = {
+        text: 'A> Hello Barnaby!\nB> Greetings Chef Bot!\nC> Dinner is ready.',
+        speakers: [
+          { voice_id: 'elevenlabs_hpp4J3VqNfWAUOO0d1Us', speed: 1.0 },
+          { voice_id: 'minimax_male-qn-qingse', speed: 1.0 },
+          { voice_id: 'edge_en-US-GuyNeural', speed: 1.0 },
+        ],
+        delay: 0.4,
+        with_transcript: true,
+      };
+      const result = AI33DialogueRequestSchema.safeParse(validDialogue);
+      expect(result.success).toBe(true);
+    });
+
+    it('should reject dialogue request with fewer than 2 speakers', () => {
+      const invalid = {
+        text: 'A> Solo monologue.',
+        speakers: [{ voice_id: 'edge_en-US-GuyNeural' }],
+      };
+      const result = AI33DialogueRequestSchema.safeParse(invalid);
+      expect(result.success).toBe(false);
+    });
+
+    it('should validate pronunciation dictionary rule', () => {
+      const rule = {
+        from: '3D Studio',
+        to: 'Three Dee Studio',
+        matchType: 'contains',
+      };
+      const parsed = AI33PronunciationRuleSchema.parse(rule);
+      expect(parsed.from).toBe('3D Studio');
+      expect(parsed.caseSensitive).toBe(false);
     });
   });
 });

@@ -12,7 +12,7 @@
 | **Queue & Cache** | Redis & BullMQ | Redis 7.x, BullMQ 5.x | Distributed asynchronous rendering job queue |
 | **Database & Auth** | Supabase (PostgreSQL) | Supabase JS 2.x | Relational persistence, JSONB scene specs, asset storage |
 | **AI Language** | OpenRouter (or OpenAI/Anthropic) | REST API | Multi-model script generation and scene breakdown |
-| **AI Voice** | ElevenLabs | REST API | Character voice synthesis and phonetic alignment |
+| **AI Voice** | ai33.pro (Unified v3) | REST API | Character voice synthesis (ElevenLabs, Minimax, Clone, Edge, Kokoro, Vbee, FishAudio) & multi-speaker dialogue |
 
 ---
 
@@ -50,12 +50,13 @@
   3. Provide automatic prompt retry (up to 2 retries) with structured repair prompts upon validation failure.
   4. Provide the fully deterministic `mock` adapter for guaranteed local reliability during development.
 
-### 2.5. Audio Lip-Sync & Phonetic Accuracy
-- **Challenge:** Full bone-driven speech lip-sync requires complex facial viseme curves and phoneme alignment. ElevenLabs timestamps may not always provide 100% fine-grained phonemes across all voices.
-- **Risk:** Uncanny valley mouth movements or desynchronized speech animation.
+### 2.5. Audio Lip-Sync & Multi-Speaker Dialogue Pacing
+- **Challenge:** Full bone-driven speech lip-sync requires accurate volume envelopes and timing. Multi-speaker dialogue requires consistent gaps between character turns.
+- **Risk:** Uncanny valley mouth movements, overlapping voices, or desynchronized speech animation.
 - **Mitigation Strategy:**
-  1. Utilize procedural amplitude-based jaw rotation combined with vowel viseme blend shapes.
-  2. Normalize character mouth movement to speech audio volume envelopes to ensure natural cartoon-style stylized articulation.
+  1. Utilize `ai33.pro` v3 `delay` parameter to regulate dialogue gaps between speakers (e.g. 0.4s).
+  2. Utilize procedural amplitude-based jaw rotation combined with cartoon vowel viseme blend shapes.
+  3. Normalize character mouth movement to speech audio volume envelopes to ensure natural cartoon-style stylized articulation.
 
 ### 2.6. Redis Durability & BullMQ Eviction
 - **Challenge:** If Redis runs out of memory and has a standard `volatile-lru` or `allkeys-lru` eviction policy, active BullMQ queue keys can be evicted, causing dropped render jobs.

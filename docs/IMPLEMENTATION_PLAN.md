@@ -89,7 +89,7 @@ Implement character movement keyframing, facial expression transitions, dynamic 
 Integrate text-to-speech voice generation, dialogue timing alignment, background music beds, sound effects (SFX), and multi-track audio sequencing.
 
 ### 4.2. Key Deliverables
-- `@studio/ai-adapters`: ElevenLabs integration adapter and offline mock audio synthesizer.
+- `@studio/ai-adapters`: `ai33.pro` Unified v3 integration adapter (TTS, multi-speaker dialogue, voice library, voice cloning, pronunciation dictionaries) and offline mock audio synthesizer.
 - Audio Asset Manager: Storage and retrieval of synthesized speech clips, royalty-free BGM, and SFX.
 - Automated Dialogue Timing: Audio duration inspection to automatically size scene duration.
 - Character Lip-Sync Approximation: Phoneme/volume-based jaw movement cues synced to speech playback.
@@ -174,7 +174,7 @@ Harden the entire application stack: API security, rate limiting, WebGL context 
 ### 7.3. Acceptance Criteria
 - [ ] API rejects malformed payloads and malicious inputs with HTTP 400 and structured error responses.
 - [ ] Simulated WebGL context loss does not crash the web app; canvas recovers smoothly.
-- [ ] Third-party API failures (OpenRouter/ElevenLabs) trigger graceful fallbacks or actionable user prompts.
+- [ ] Third-party API failures (OpenRouter/ai33.pro) trigger graceful fallbacks or actionable user prompts.
 - [ ] No private keys or service tokens appear in browser bundles or client network traces.
 
 ### 7.4. Verification Tests

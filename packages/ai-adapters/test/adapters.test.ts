@@ -5,6 +5,8 @@ import {
   MockAIAdapter,
   OpenRouterAIAdapter,
   getAIAdapter,
+  MockVoiceAdapter,
+  getVoiceAdapter,
 } from '../src';
 
 describe('AI Adapters & JSON Parser', () => {
@@ -110,6 +112,54 @@ describe('AI Adapters & JSON Parser', () => {
 
     it('should fallback to MockAIAdapter if API key is placeholder', () => {
       const adapter = getAIAdapter({ provider: 'openrouter', apiKey: 'placeholder' });
+      expect(adapter.providerName).toBe('mock');
+    });
+  });
+
+  describe('Voice Adapters (ai33.pro unified & mock)', () => {
+    const voiceAdapter = new MockVoiceAdapter();
+
+    it('should test connection successfully', async () => {
+      const res = await voiceAdapter.testConnection();
+      expect(res.connected).toBe(true);
+    });
+
+    it('should synthesize single speaker speech with duration estimate', async () => {
+      const res = await voiceAdapter.synthesizeSpeech({
+        voice_id: 'minimax_male-qn-qingse',
+        text: 'This is a test speech line for our 3D animated character.',
+        speed: 1.0,
+      });
+
+      expect(res.durationSeconds).toBeGreaterThan(0);
+      expect(res.taskId).toContain('mock-task');
+      expect(res.format).toBe('mp3');
+    });
+
+    it('should synthesize multi-speaker dialogue with speaker pauses', async () => {
+      const res = await voiceAdapter.synthesizeDialogue({
+        text: 'A> Hello there Barnaby!\nB> Greetings Chef Bot!',
+        speakers: [
+          { voice_id: 'minimax_male-qn-qingse', speed: 1.0 },
+          { voice_id: 'elevenlabs_hpp4J3VqNfWAUOO0d1Us', speed: 1.0 },
+        ],
+        delay: 0.5,
+      });
+
+      expect(res.durationSeconds).toBeGreaterThan(0);
+      expect(res.taskId).toContain('mock-dialogue-task');
+    });
+
+    it('should list normalized voice library models with filtering', async () => {
+      const all = await voiceAdapter.listVoices();
+      expect(all.length).toBeGreaterThanOrEqual(4);
+
+      const minimaxOnly = await voiceAdapter.listVoices({ provider: 'minimax' });
+      expect(minimaxOnly.every((v) => v.voice_id.startsWith('minimax_'))).toBe(true);
+    });
+
+    it('should fallback to MockVoiceAdapter via factory when API key is placeholder', () => {
+      const adapter = getVoiceAdapter({ provider: 'ai33', apiKey: 'placeholder_key' });
       expect(adapter.providerName).toBe('mock');
     });
   });

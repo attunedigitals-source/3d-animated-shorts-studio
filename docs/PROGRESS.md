@@ -60,7 +60,7 @@ This document tracks the live implementation status of the 3D Animated Shorts St
 - [ ] Execute Phase 3 verification tests.
 
 ### Phase 4: Voice Generation & Audio Production (Not Started)
-- [ ] Implement ElevenLabs adapter and mock voice engine in `@studio/ai-adapters`.
+- [ ] Implement `ai33.pro` Unified v3 adapter (TTS, multi-speaker dialogue, voice library, cloning, pronunciation dictionaries) and mock voice engine in `@studio/ai-adapters`.
 - [ ] Implement audio asset manager and storage integration.
 - [ ] Automated dialogue duration detection and scene length sync.
 - [ ] Implement procedural mouth movement / lip-sync cues.

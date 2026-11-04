@@ -8,7 +8,7 @@ The system is designed with strict enterprise-grade boundaries:
 - **No Client-Side Video Rendering:** All intensive frame composition, 3D rasterization, and FFmpeg encoding happen in dedicated background worker processes.
 - **Genuine 3D Animation:** Scenes use actual Three.js meshes, bones, rigs, blend shapes, and keyframed camera paths, avoiding static 2D slideshows or image cross-fading.
 - **Zero Fabricated Functionality:** Every progress bar, state change, and status report reflects real backend and worker events.
-- **Provider Agnosticism:** AI reasoning and voice synthesis use pluggable adapters (OpenRouter, ElevenLabs, OpenAI, Anthropic, or deterministic offline mock adapters).
+- **Provider Agnosticism:** AI reasoning and voice synthesis use pluggable adapters (OpenRouter, ai33.pro Unified v3, OpenAI, Anthropic, or deterministic offline mock adapters).
 - **Strict Secrets Isolation:** Private provider keys and database service roles are confined to the backend and worker processes; the client bundle receives zero secrets.
 
 ---
@@ -42,10 +42,10 @@ flowchart TD
     subgraph ServiceIntegrations ["3. External Integrations & Adapters"]
         AIAdapters["@studio/ai-adapters"]
         OpenRouter["OpenRouter / LLM APIs"]
-        ElevenLabs["ElevenLabs Voice API"]
+        AI33Voice["ai33.pro Voice API (ElevenLabs / Minimax / Edge / Kokoro)"]
         MockEngines["Offline Mock Engines"]
         AIAdapters --> OpenRouter
-        AIAdapters --> ElevenLabs
+        AIAdapters --> AI33Voice
         AIAdapters --> MockEngines
     end
 
@@ -150,9 +150,11 @@ The system is decomposed into nine specialized domains:
   - Maps 3D rendered frames to Remotion `<Sequence>` layers.
 
 ### 3.8. Audio Processing & Speech Synthesis (`packages/ai-adapters` + FFmpeg)
-- **Technology:** ElevenLabs API client, Web Audio API (client preview), FFmpeg `amix` / `volume` audio filter graphs.
+- **Technology:** `ai33.pro` Unified v3 API client (supporting ElevenLabs, Minimax, Clone, Edge, Kokoro, Vbee, and FishAudio voice models), Web Audio API (client preview), FFmpeg `amix` / `volume` audio filter graphs.
 - **Capabilities:**
-  - **TTS Synthesis:** High-quality character dialogue audio generation with word/character timestamps.
+  - **TTS & Multi-Speaker Dialogue Synthesis:** High-quality character dialogue audio generation supporting single TTS (`POST /v3/text-to-speech`) and multi-speaker dialogue sequencing (`POST /v3/text-to-speech/dialogue`) with customizable speaker delays.
+  - **Voice Library & Cloning:** Normalized voice catalogue across multiple engines, plus custom voice cloning (`POST /v3/text-to-speech/voice-clone`).
+  - **Pronunciation Dictionaries:** Custom word-replacement rules (`/v3/dictionaries`) to maintain correct character names and cartoon terminology in synthesized speech.
   - **Dialogue Timing Alignment:** Audio track duration dynamically determines scene frame length.
   - **Speech Lip-Sync Approximation:** Character jaw and mouth blend shapes articulate synchronously to speech audio volume envelopes.
   - **Multi-Track Mixing:** FFmpeg mixes dialogue, auto-ducked background music, and sound effects with volume envelopes and fade-in/fade-out transitions.
@@ -184,7 +186,7 @@ The system is decomposed into nine specialized domains:
 
 ### 4.3. Voiceover & Audio Synthesis Flow
 1. **Dialogue Extraction:** `apps/api` receives dialogue lines associated with each character.
-2. **TTS Generation:** The voice adapter invokes ElevenLabs (or the deterministic voice mock) to generate an audio buffer (`.mp3`/`.wav`) and phonetic timestamps.
+2. **TTS / Multi-Speaker Synthesis:** The voice adapter invokes `ai33.pro` Unified v3 API (or the deterministic voice mock) to generate an audio buffer (`.mp3`/`.wav`) and transcripts.
 3. **Audio Upload:** The generated audio file is stored via `@studio/storage` in the project assets bucket.
 4. **Sync Metadata:** Audio URLs, durations, and character mouth-movement cues are saved to Supabase and synced to the client timeline.
 
@@ -232,7 +234,7 @@ sequenceDiagram
 ## 5. Security Architecture & Secrets Isolation
 
 1. **Client Isolation:** `apps/web` is compiled with Vite. Only environment variables prefixed with `VITE_` are bundled into client code.
-2. **Secret Containment:** Provider API keys (`OPENROUTER_API_KEY`, `ELEVENLABS_API_KEY`, `SUPABASE_SERVICE_ROLE_KEY`) are exclusively accessible to `apps/api` and `apps/worker` via runtime environment variables.
+2. **Secret Containment:** Provider API keys (`OPENROUTER_API_KEY`, `AI33_API_KEY`, `SUPABASE_SERVICE_ROLE_KEY`) are exclusively accessible to `apps/api` and `apps/worker` via runtime environment variables.
 3. **Database Row Level Security (RLS):** Supabase database tables enforce RLS policies tied to the authenticated user ID. The backend API uses the `service_role` key strictly when executing authorized system operations.
 4. **CORS & Rate Limiting:** The backend API restricts origins to authorized client domains and implements strict rate limits on AI generation and render triggers.
 

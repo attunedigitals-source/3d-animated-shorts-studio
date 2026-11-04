@@ -10,6 +10,7 @@ export * from './project';
 export * from './auth';
 export * from './ai';
 export * from './api';
+export * from './voice';
 
 // ==============================================================================
 // 3D & MEDIA PIPELINE TYPES (Forward compatibility for Phases 2–8)

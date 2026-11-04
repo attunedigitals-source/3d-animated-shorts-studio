@@ -6,6 +6,11 @@ import {
   AIGenerationMetadata,
   AISettings,
   TestConnectionResponse,
+  AI33TTSRequest,
+  AI33DialogueRequest,
+  AI33Voice,
+  AI33VoiceProvider,
+  VoiceSynthesisResult,
 } from '@studio/types';
 
 export interface IAIProviderAdapter {
@@ -29,5 +34,31 @@ export interface IAIProviderAdapter {
   ): Promise<{ scenes: StructuredScene[]; metadata: Omit<AIGenerationMetadata, 'id' | 'createdAt'> }>;
 
   testConnection(settings: Partial<AISettings>): Promise<TestConnectionResponse>;
+}
+
+export interface IVoiceAdapter {
+  readonly providerName: string;
+
+  synthesizeSpeech(
+    request: AI33TTSRequest,
+    apiKey?: string,
+  ): Promise<VoiceSynthesisResult>;
+
+  synthesizeDialogue(
+    request: AI33DialogueRequest,
+    apiKey?: string,
+  ): Promise<VoiceSynthesisResult>;
+
+  listVoices(
+    options?: {
+      provider?: AI33VoiceProvider;
+      language?: string;
+      gender?: string;
+      search?: string;
+    },
+    apiKey?: string,
+  ): Promise<AI33Voice[]>;
+
+  testConnection(apiKey?: string): Promise<{ connected: boolean; message?: string }>;
 }
 
