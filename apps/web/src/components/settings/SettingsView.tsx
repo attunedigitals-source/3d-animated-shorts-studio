@@ -68,8 +68,8 @@ export const SettingsView: React.FC = () => {
   const providers: { id: AIProviderType; name: string; desc: string }[] = [
     {
       id: 'openrouter',
-      name: 'OpenRouter',
-      desc: 'Access Claude 3.5, GPT-4o, Llama 3, and 100+ models with automatic fallbacks.',
+      name: 'OpenRouter Free Tier & Auto-Fallback',
+      desc: 'Automatic free models (Llama 3.3, Gemini 2.0, DeepSeek R1) with instant cascade fallback.',
     },
     {
       id: 'openai',
@@ -241,7 +241,7 @@ export const SettingsView: React.FC = () => {
                   key={p.id}
                   onClick={() => {
                     const defaultModels: Record<AIProviderType, string> = {
-                      openrouter: 'anthropic/claude-3.5-sonnet',
+                      openrouter: 'meta-llama/llama-3.3-70b-instruct:free',
                       openai: 'gpt-4o',
                       anthropic: 'claude-3-5-sonnet-20241022',
                       mock: 'mock-story-v1',

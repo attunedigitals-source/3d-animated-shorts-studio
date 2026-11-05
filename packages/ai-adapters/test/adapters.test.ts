@@ -4,6 +4,8 @@ import {
   extractAndValidateJson,
   MockAIAdapter,
   OpenRouterAIAdapter,
+  DEFAULT_OPENROUTER_FREE_MODELS,
+  getAvailableFreeModels,
   getAIAdapter,
   MockVoiceAdapter,
   getVoiceAdapter,
@@ -101,6 +103,33 @@ describe('AI Adapters & JSON Parser', () => {
       expect(scenesRes.scenes[0]!.environmentDescription).toBeTruthy();
       expect(scenesRes.scenes[0]!.cameraDirectionSuggestions).toBeTruthy();
       expect(scenesRes.scenes[0]!.propsRequired.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('OpenRouter Free Models & Automatic Fallback', () => {
+    it('should have a curated list of verified free models', () => {
+      expect(DEFAULT_OPENROUTER_FREE_MODELS.length).toBeGreaterThanOrEqual(5);
+      expect(DEFAULT_OPENROUTER_FREE_MODELS.every((m) => m.endsWith(':free'))).toBe(true);
+      expect(DEFAULT_OPENROUTER_FREE_MODELS[0]).toBe('meta-llama/llama-3.3-70b-instruct:free');
+    });
+
+    it('should return available free models list', async () => {
+      const freeModels = await getAvailableFreeModels();
+      expect(freeModels.length).toBeGreaterThanOrEqual(5);
+      expect(freeModels).toContain('meta-llama/llama-3.3-70b-instruct:free');
+      expect(freeModels).toContain('google/gemini-2.0-flash-exp:free');
+    });
+
+    it('should instantiate OpenRouterAIAdapter with provider openrouter', () => {
+      const adapter = new OpenRouterAIAdapter();
+      expect(adapter.providerName).toBe('openrouter');
+    });
+
+    it('should reject connection test when API key is missing', async () => {
+      const adapter = new OpenRouterAIAdapter();
+      const res = await adapter.testConnection({ apiKey: '' });
+      expect(res.connected).toBe(false);
+      expect(res.message).toMatch(/not configured/i);
     });
   });
 

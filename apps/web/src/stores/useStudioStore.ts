@@ -128,7 +128,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
 
   aiSettings: {
     provider: 'openrouter',
-    model: 'anthropic/claude-3.5-sonnet',
+    model: 'meta-llama/llama-3.3-70b-instruct:free',
   },
   availableModels: [],
   isSupabaseConfigured: false,
@@ -264,9 +264,16 @@ export const useStudioStore = create<StudioState>((set, get) => ({
         set({ user: session.user, isDevAuth: Boolean(session.isDevFallback) });
       }
 
+      const rawProvider = localAi.provider || settingsRes?.ai?.provider || 'openrouter';
+      let rawModel = localAi.model || settingsRes?.ai?.model || 'meta-llama/llama-3.3-70b-instruct:free';
+      // If using OpenRouter and model is legacy Claude or not set, default to free Llama 3.3 70B
+      if (rawProvider === 'openrouter' && (rawModel === 'anthropic/claude-3.5-sonnet' || !rawModel)) {
+        rawModel = 'meta-llama/llama-3.3-70b-instruct:free';
+      }
+
       const effectiveAi = {
-        provider: localAi.provider || settingsRes?.ai?.provider || 'openrouter',
-        model: localAi.model || settingsRes?.ai?.model || 'anthropic/claude-3.5-sonnet',
+        provider: rawProvider,
+        model: rawModel,
         apiKey: localAi.apiKey || settingsRes?.ai?.apiKey || '',
         baseUrl: localAi.baseUrl || settingsRes?.ai?.baseUrl || '',
         mockAi: localAi.mockAi ?? settingsRes?.ai?.mockAi ?? false,
@@ -297,10 +304,13 @@ export const useStudioStore = create<StudioState>((set, get) => ({
         supabaseSettings: effectiveDb,
         isSupabaseConfigured,
         availableModels: settingsRes?.availableModels || [
-          { id: 'anthropic/claude-3.5-sonnet', name: 'Claude 3.5 Sonnet', provider: 'openrouter', tier: 'flagship', description: 'Best-in-class reasoning and cinematic screenplay scripting' },
-          { id: 'openai/gpt-4o', name: 'GPT-4o', provider: 'openrouter', tier: 'flagship', description: 'Fast, high-fidelity dialogue and story arcs' },
-          { id: 'meta-llama/llama-3.3-70b-instruct', name: 'Llama 3.3 70B', provider: 'openrouter', tier: 'standard', description: 'Open-weight high-throughput narrative engine' },
-          { id: 'google/gemini-2.0-flash-exp:free', name: 'Gemini 2.0 Flash (Free)', provider: 'openrouter', tier: 'fast', description: 'Zero-cost high-speed narrative generation' },
+          { id: 'meta-llama/llama-3.3-70b-instruct:free', name: 'Llama 3.3 70B (Free · Auto-Fallback)', provider: 'openrouter', tier: 'flagship', description: 'Zero-cost flagship 70B narrative engine with automatic cascade fallback' },
+          { id: 'google/gemini-2.0-flash-exp:free', name: 'Gemini 2.0 Flash (Free · Auto-Fallback)', provider: 'openrouter', tier: 'fast', description: 'Zero-cost ultra-fast high-context narrative generation' },
+          { id: 'deepseek/deepseek-r1:free', name: 'DeepSeek R1 (Free · Auto-Fallback)', provider: 'openrouter', tier: 'flagship', description: 'Zero-cost deep reasoning model for intricate plots' },
+          { id: 'qwen/qwen-2.5-72b-instruct:free', name: 'Qwen 2.5 72B (Free · Auto-Fallback)', provider: 'openrouter', tier: 'standard', description: 'Zero-cost rich dialogue and character generation' },
+          { id: 'meta-llama/llama-3.2-3b-instruct:free', name: 'Llama 3.2 3B (Free · Fast)', provider: 'openrouter', tier: 'fast', description: 'Zero-cost lightweight rapid fallback engine' },
+          { id: 'anthropic/claude-3.5-sonnet', name: 'Claude 3.5 Sonnet (Premium)', provider: 'openrouter', tier: 'flagship', description: 'Best-in-class reasoning (requires OpenRouter credits)' },
+          { id: 'openai/gpt-4o', name: 'GPT-4o (Premium)', provider: 'openrouter', tier: 'flagship', description: 'Omnimodal flagship (requires OpenRouter credits)' },
           { id: 'claude-3-5-sonnet-20241022', name: 'Claude 3.5 Sonnet (Direct)', provider: 'anthropic', tier: 'flagship', description: 'Direct Anthropic Claude integration' },
           { id: 'gpt-4o', name: 'GPT-4o (Direct)', provider: 'openai', tier: 'flagship', description: 'Direct OpenAI GPT-4o' },
           { id: 'gpt-4o-mini', name: 'GPT-4o Mini (Direct)', provider: 'openai', tier: 'fast', description: 'Fast, cost-efficient direct OpenAI model' },
