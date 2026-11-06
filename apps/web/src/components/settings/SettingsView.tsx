@@ -67,14 +67,19 @@ export const SettingsView: React.FC = () => {
 
   const providers: { id: AIProviderType; name: string; desc: string }[] = [
     {
+      id: 'ollama',
+      name: 'Ollama (Self-Hosted AWS EC2)',
+      desc: 'Private self-hosted Ollama instance running llama3.2:3b on AWS EC2.',
+    },
+    {
       id: 'openrouter',
       name: 'OpenRouter Free Tier & Auto-Fallback',
       desc: 'Automatic free models (Llama 3.3, Gemini 2.0, DeepSeek R1) with instant cascade fallback.',
     },
     {
       id: 'openai',
-      name: 'OpenAI / Self-Hosted Compatible',
-      desc: 'Connect directly to OpenAI or local models via Ollama, vLLM, or LM Studio.',
+      name: 'OpenAI / Compatible',
+      desc: 'Connect directly to OpenAI or local models via vLLM, or LM Studio.',
     },
     {
       id: 'anthropic',
@@ -188,33 +193,30 @@ export const SettingsView: React.FC = () => {
       <div className="flex border-b border-slate-800 gap-2">
         <button
           onClick={() => setActiveTab('ai')}
-          className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold border-b-2 transition ${
-            activeTab === 'ai'
+          className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold border-b-2 transition ${activeTab === 'ai'
               ? 'border-indigo-500 text-indigo-400 bg-indigo-500/10 rounded-t-lg'
               : 'border-transparent text-slate-400 hover:text-slate-200'
-          }`}
+            }`}
         >
           <Cpu className="w-4 h-4" />
           AI Language Model
         </button>
         <button
           onClick={() => setActiveTab('voice')}
-          className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold border-b-2 transition ${
-            activeTab === 'voice'
+          className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold border-b-2 transition ${activeTab === 'voice'
               ? 'border-purple-500 text-purple-400 bg-purple-500/10 rounded-t-lg'
               : 'border-transparent text-slate-400 hover:text-slate-200'
-          }`}
+            }`}
         >
           <Mic className="w-4 h-4" />
           AI Voice & Dialogue (ai33.pro)
         </button>
         <button
           onClick={() => setActiveTab('database')}
-          className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold border-b-2 transition ${
-            activeTab === 'database'
+          className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold border-b-2 transition ${activeTab === 'database'
               ? 'border-emerald-500 text-emerald-400 bg-emerald-500/10 rounded-t-lg'
               : 'border-transparent text-slate-400 hover:text-slate-200'
-          }`}
+            }`}
         >
           <Database className="w-4 h-4" />
           Supabase Cloud Database
@@ -241,6 +243,7 @@ export const SettingsView: React.FC = () => {
                   key={p.id}
                   onClick={() => {
                     const defaultModels: Record<AIProviderType, string> = {
+                      ollama: 'llama3.2:3b',
                       openrouter: 'meta-llama/llama-3.3-70b-instruct:free',
                       openai: 'gpt-4o',
                       anthropic: 'claude-3-5-sonnet-20241022',
@@ -248,14 +251,13 @@ export const SettingsView: React.FC = () => {
                     };
                     setAiSettings({
                       provider: p.id,
-                      model: defaultModels[p.id] || 'gpt-4o',
+                      model: defaultModels[p.id] || 'llama3.2:3b',
                     });
                   }}
-                  className={`p-4 rounded-xl border cursor-pointer transition flex flex-col justify-between space-y-2 ${
-                    isSelected
+                  className={`p-4 rounded-xl border cursor-pointer transition flex flex-col justify-between space-y-2 ${isSelected
                       ? 'bg-indigo-600/15 border-indigo-500/50 shadow-md shadow-indigo-600/10'
                       : 'bg-slate-950/60 border-slate-800 hover:border-slate-700'
-                  }`}
+                    }`}
                 >
                   <div className="flex items-center justify-between">
                     <span className="font-bold text-sm text-white">{p.name}</span>
@@ -299,7 +301,19 @@ export const SettingsView: React.FC = () => {
               </div>
             </div>
 
-            {aiSettings.provider !== 'mock' && (
+            {aiSettings.provider === 'ollama' && (
+              <div className="p-3.5 rounded-xl bg-indigo-950/40 border border-indigo-500/20 text-xs space-y-1">
+                <span className="font-bold text-indigo-300 flex items-center gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-indigo-400" />
+                  Self-Hosted AWS EC2 Ollama Active
+                </span>
+                <p className="text-slate-400 text-[11px] leading-relaxed">
+                  Narrative reasoning uses your private <code className="text-indigo-200 font-mono">llama3.2:3b</code> model. All requests route securely through the Studio Express API backend, keeping internal endpoints and infrastructure private.
+                </p>
+              </div>
+            )}
+
+            {aiSettings.provider !== 'mock' && aiSettings.provider !== 'ollama' && (
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-slate-300 flex items-center justify-between">
                   <span className="flex items-center gap-1.5">
@@ -333,7 +347,7 @@ export const SettingsView: React.FC = () => {
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
                   <Globe className="w-3.5 h-3.5 text-indigo-400" />
-                  Custom Base URL (e.g. for Ollama / LM Studio)
+                  Custom Base URL (e.g. for LM Studio)
                 </label>
                 <input
                   type="text"
@@ -357,11 +371,10 @@ export const SettingsView: React.FC = () => {
 
               {aiTestResult && (
                 <div
-                  className={`flex items-center gap-2 text-xs px-3 py-1.5 rounded-xl border ${
-                    aiTestResult.connected
+                  className={`flex items-center gap-2 text-xs px-3 py-1.5 rounded-xl border ${aiTestResult.connected
                       ? 'bg-emerald-950/40 border-emerald-500/30 text-emerald-300'
                       : 'bg-rose-950/40 border-rose-500/30 text-rose-300'
-                  }`}
+                    }`}
                 >
                   {aiTestResult.connected ? (
                     <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
@@ -398,11 +411,10 @@ export const SettingsView: React.FC = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div
               onClick={() => setVoiceSettings({ provider: 'ai33' })}
-              className={`p-4 rounded-xl border cursor-pointer transition flex flex-col justify-between space-y-2 ${
-                voiceSettings.provider === 'ai33'
+              className={`p-4 rounded-xl border cursor-pointer transition flex flex-col justify-between space-y-2 ${voiceSettings.provider === 'ai33'
                   ? 'bg-purple-600/15 border-purple-500/50 shadow-md shadow-purple-600/10'
                   : 'bg-slate-950/60 border-slate-800 hover:border-slate-700'
-              }`}
+                }`}
             >
               <div className="flex items-center justify-between">
                 <span className="font-bold text-sm text-white">ai33.pro Cloud Engine</span>
@@ -413,11 +425,10 @@ export const SettingsView: React.FC = () => {
 
             <div
               onClick={() => setVoiceSettings({ provider: 'mock' })}
-              className={`p-4 rounded-xl border cursor-pointer transition flex flex-col justify-between space-y-2 ${
-                voiceSettings.provider === 'mock'
+              className={`p-4 rounded-xl border cursor-pointer transition flex flex-col justify-between space-y-2 ${voiceSettings.provider === 'mock'
                   ? 'bg-purple-600/15 border-purple-500/50 shadow-md shadow-purple-600/10'
                   : 'bg-slate-950/60 border-slate-800 hover:border-slate-700'
-              }`}
+                }`}
             >
               <div className="flex items-center justify-between">
                 <span className="font-bold text-sm text-white">Offline Mock Voice</span>
@@ -497,11 +508,10 @@ export const SettingsView: React.FC = () => {
 
               {voiceTestResult && (
                 <div
-                  className={`flex items-center gap-2 text-xs px-3 py-1.5 rounded-xl border ${
-                    voiceTestResult.connected
+                  className={`flex items-center gap-2 text-xs px-3 py-1.5 rounded-xl border ${voiceTestResult.connected
                       ? 'bg-emerald-950/40 border-emerald-500/30 text-emerald-300'
                       : 'bg-rose-950/40 border-rose-500/30 text-rose-300'
-                  }`}
+                    }`}
                 >
                   {voiceTestResult.connected ? (
                     <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
@@ -527,11 +537,10 @@ export const SettingsView: React.FC = () => {
               Supabase PostgreSQL Database & Authentication
             </h2>
             <span
-              className={`px-2.5 py-0.5 rounded-full text-xs font-semibold border ${
-                isSupabaseConfigured
+              className={`px-2.5 py-0.5 rounded-full text-xs font-semibold border ${isSupabaseConfigured
                   ? 'bg-emerald-950 text-emerald-300 border-emerald-800'
                   : 'bg-amber-950 text-amber-300 border-amber-800'
-              }`}
+                }`}
             >
               {isSupabaseConfigured ? 'Supabase Connected' : 'Local Dev Mode'}
             </span>
@@ -541,11 +550,10 @@ export const SettingsView: React.FC = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div
               onClick={() => setSupabaseSettings({ mode: 'supabase' })}
-              className={`p-4 rounded-xl border cursor-pointer transition flex flex-col justify-between space-y-2 ${
-                supabaseSettings.mode === 'supabase'
+              className={`p-4 rounded-xl border cursor-pointer transition flex flex-col justify-between space-y-2 ${supabaseSettings.mode === 'supabase'
                   ? 'bg-emerald-600/15 border-emerald-500/50 shadow-md shadow-emerald-600/10'
                   : 'bg-slate-950/60 border-slate-800 hover:border-slate-700'
-              }`}
+                }`}
             >
               <div className="flex items-center justify-between">
                 <span className="font-bold text-sm text-white flex items-center gap-2">
@@ -559,11 +567,10 @@ export const SettingsView: React.FC = () => {
 
             <div
               onClick={() => setSupabaseSettings({ mode: 'dev' })}
-              className={`p-4 rounded-xl border cursor-pointer transition flex flex-col justify-between space-y-2 ${
-                supabaseSettings.mode === 'dev'
+              className={`p-4 rounded-xl border cursor-pointer transition flex flex-col justify-between space-y-2 ${supabaseSettings.mode === 'dev'
                   ? 'bg-emerald-600/15 border-emerald-500/50 shadow-md shadow-emerald-600/10'
                   : 'bg-slate-950/60 border-slate-800 hover:border-slate-700'
-              }`}
+                }`}
             >
               <div className="flex items-center justify-between">
                 <span className="font-bold text-sm text-white flex items-center gap-2">
@@ -659,11 +666,10 @@ export const SettingsView: React.FC = () => {
 
               {supabaseTestResult && (
                 <div
-                  className={`flex items-center gap-2 text-xs px-3 py-1.5 rounded-xl border ${
-                    supabaseTestResult.connected
+                  className={`flex items-center gap-2 text-xs px-3 py-1.5 rounded-xl border ${supabaseTestResult.connected
                       ? 'bg-emerald-950/40 border-emerald-500/30 text-emerald-300'
                       : 'bg-rose-950/40 border-rose-500/30 text-rose-300'
-                  }`}
+                    }`}
                 >
                   {supabaseTestResult.connected ? (
                     <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />

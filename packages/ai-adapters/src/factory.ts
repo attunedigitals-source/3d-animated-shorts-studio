@@ -4,6 +4,7 @@ import { MockAIAdapter } from './mock-adapter';
 import { OpenRouterAIAdapter } from './openrouter-adapter';
 import { OpenAICompatibleAdapter } from './openai-adapter';
 import { AnthropicAIAdapter } from './anthropic-adapter';
+import { OllamaAIAdapter } from './ollama-adapter';
 
 const getEnv = (key: string): string | undefined => {
   if (typeof process !== 'undefined' && process.env) {
@@ -48,6 +49,9 @@ export function getAIAdapter(settings?: Partial<AISettings>): IAIProviderAdapter
         return new MockAIAdapter();
       }
       return new AnthropicAIAdapter();
+    }
+    case 'ollama': {
+      return new OllamaAIAdapter();
     }
     case 'mock':
     default:

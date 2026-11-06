@@ -3,9 +3,14 @@
   "buildCommand": "pnpm turbo run build --filter=@studio/web...",
   "outputDirectory": "apps/web/dist",
   "framework": "vite",
+  "functions": {
+    "api/generate.ts": {
+      "maxDuration": 300
+    }
+  },
   "rewrites": [
     {
-      "source": "/(.*)",
+      "source": "/((?!api/).*)",
       "destination": "/index.html"
     }
   ]

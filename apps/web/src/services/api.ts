@@ -17,7 +17,7 @@ import {
   UserProfile,
   UserCredentials,
 } from '@studio/types';
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { clientRepository } from './clientRepository';
 
 export const getApiBase = (): string => {
@@ -46,6 +46,9 @@ export const getApiBase = (): string => {
 class ApiService {
   private token: string | null = null;
   private devUserId: string = 'dev-user-001';
+  private supabaseClient: SupabaseClient | null = null;
+  private currentSupabaseUrl: string = '';
+  private currentSupabaseKey: string = '';
 
   constructor() {
     if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
@@ -77,14 +80,90 @@ class ApiService {
     return this.devUserId;
   }
 
+  getToken(): string | null {
+    if (this.token) return this.token;
+    if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+      const stored = localStorage.getItem('studio_auth_token');
+      if (stored) {
+        this.token = stored;
+        return stored;
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Refreshes or retrieves the active session directly from the Supabase client.
+   * Uses supabase.auth.getSession() rather than searching localStorage.
+   */
+  async refreshSession(): Promise<string | null> {
+    const supabase = this.getSupabaseClient();
+    if (supabase) {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (session && !error && session.access_token) {
+          this.setToken(session.access_token);
+          if (session.user?.id) this.setDevUserId(session.user.id);
+          return session.access_token;
+        }
+      } catch (err) {
+        console.warn('[ApiService] Failed to retrieve session from Supabase client:', err);
+      }
+    }
+    return this.getToken();
+  }
+
+  refreshSupabaseClient(): void {
+    this.supabaseClient = null;
+    this.currentSupabaseUrl = '';
+    this.currentSupabaseKey = '';
+    this.getSupabaseClient();
+  }
+
+  private getSupabaseClient(): SupabaseClient | null {
+    if (typeof window === 'undefined') return null;
+    let url = import.meta.env.VITE_SUPABASE_URL;
+    let key = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+    try {
+      const stored = localStorage.getItem('studio_supabase_settings');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed.supabaseUrl) url = parsed.supabaseUrl.trim();
+        if (parsed.supabaseAnonKey) key = parsed.supabaseAnonKey.trim();
+      }
+    } catch {}
+
+    if (!url || !key || url.includes('your-project-id') || key.includes('placeholder')) {
+      this.supabaseClient = null;
+      this.currentSupabaseUrl = '';
+      this.currentSupabaseKey = '';
+      return null;
+    }
+
+    if (!this.supabaseClient || this.currentSupabaseUrl !== url || this.currentSupabaseKey !== key) {
+      this.supabaseClient = createClient(url, key, {
+        auth: {
+          persistSession: true,
+          autoRefreshToken: true,
+        },
+      });
+      this.currentSupabaseUrl = url;
+      this.currentSupabaseKey = key;
+    }
+
+    return this.supabaseClient;
+  }
+
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       ...(options.headers as Record<string, string> || {}),
     };
 
-    if (this.token) {
-      headers['Authorization'] = `Bearer ${this.token}`;
+    const token = this.getToken();
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
     }
     headers['x-user-id'] = this.devUserId;
 
@@ -112,8 +191,69 @@ class ApiService {
     return (data.data !== undefined ? data.data : data) as T;
   }
 
+  // ----------------------------------------------------
+  // AWS EC2 FastAPI + Ollama Generator Endpoint (/api/generate)
+  // ----------------------------------------------------
+  async generate<T = any>(payload: unknown): Promise<T> {
+    // 1. Ensure current session is refreshed or retrieved from Supabase client before making request
+    const token = await this.refreshSession();
+
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const response = await fetch('/api/generate', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(payload),
+    });
+
+    const contentType = response.headers.get('content-type') || '';
+    const data = contentType.includes('application/json')
+      ? await response.json().catch(() => null)
+      : null;
+
+    if (!response.ok) {
+      const errorMsg = data?.message || data?.error || `Generation request failed with status ${response.status}`;
+      throw new Error(errorMsg);
+    }
+
+    return (data !== null ? data : {}) as T;
+  }
+
   // Auth
   async login(credentials: UserCredentials): Promise<{ user: UserProfile; accessToken: string; isDevFallback?: boolean }> {
+    // 1. Direct Supabase Client Authentication (when Supabase is configured)
+    const supabase = this.getSupabaseClient();
+    if (supabase) {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: credentials.email,
+        password: credentials.password,
+      });
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      if (data?.session && data?.user) {
+        const token = data.session.access_token;
+        const user: UserProfile = {
+          id: data.user.id,
+          email: data.user.email || credentials.email,
+          displayName: (data.user.user_metadata?.displayName as string) || credentials.displayName || credentials.email.split('@')[0] || 'User',
+          createdAt: data.user.created_at,
+        };
+        this.setToken(token);
+        this.setDevUserId(user.id);
+        return { user, accessToken: token, isDevFallback: false };
+      }
+    }
+
+    // 2. Fall back to backend Express /auth/login if running
     try {
       const res = await this.request<{ user: UserProfile; accessToken: string; isDevFallback?: boolean }>('/auth/login', {
         method: 'POST',
@@ -122,22 +262,57 @@ class ApiService {
       this.setToken(res.accessToken);
       if (res.user?.id) this.setDevUserId(res.user.id);
       return res;
-    } catch {
-      // Offline fallback login
-      const user: UserProfile = {
-        id: `user_${credentials.email.split('@')[0]}`,
-        email: credentials.email,
-        displayName: credentials.displayName || credentials.email.split('@')[0] || 'User',
-        createdAt: new Date().toISOString(),
-      };
-      const token = `offline_token_${Date.now()}`;
-      this.setToken(token);
-      this.setDevUserId(user.id);
-      return { user, accessToken: token, isDevFallback: true };
+    } catch (err: any) {
+      // 3. Dev fallback only permitted when Supabase is completely unconfigured
+      if (!supabase) {
+        const user: UserProfile = {
+          id: `user_${credentials.email.split('@')[0]}`,
+          email: credentials.email,
+          displayName: credentials.displayName || credentials.email.split('@')[0] || 'User',
+          createdAt: new Date().toISOString(),
+        };
+        const token = `offline_token_${Date.now()}`;
+        this.setToken(token);
+        this.setDevUserId(user.id);
+        return { user, accessToken: token, isDevFallback: true };
+      }
+      throw err;
     }
   }
 
   async register(credentials: UserCredentials): Promise<{ user: UserProfile; accessToken: string; isDevFallback?: boolean }> {
+    const supabase = this.getSupabaseClient();
+    if (supabase) {
+      const { data, error } = await supabase.auth.signUp({
+        email: credentials.email,
+        password: credentials.password,
+        options: {
+          data: {
+            displayName: credentials.displayName || credentials.email.split('@')[0],
+          },
+        },
+      });
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      if (data?.user) {
+        const token = data.session?.access_token || '';
+        const user: UserProfile = {
+          id: data.user.id,
+          email: data.user.email || credentials.email,
+          displayName: (data.user.user_metadata?.displayName as string) || credentials.displayName || credentials.email.split('@')[0] || 'User',
+          createdAt: data.user.created_at,
+        };
+        if (token) {
+          this.setToken(token);
+        }
+        this.setDevUserId(user.id);
+        return { user, accessToken: token, isDevFallback: false };
+      }
+    }
+
     try {
       const res = await this.request<{ user: UserProfile; accessToken: string; isDevFallback?: boolean }>('/auth/register', {
         method: 'POST',
@@ -152,6 +327,26 @@ class ApiService {
   }
 
   async getSession(): Promise<{ user: UserProfile; isDevFallback?: boolean }> {
+    const supabase = this.getSupabaseClient();
+    if (supabase) {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (session && !error && session.user) {
+          this.setToken(session.access_token);
+          this.setDevUserId(session.user.id);
+          return {
+            user: {
+              id: session.user.id,
+              email: session.user.email || '',
+              displayName: (session.user.user_metadata?.displayName as string) || session.user.email?.split('@')[0] || 'User',
+              createdAt: session.user.created_at,
+            },
+            isDevFallback: false,
+          };
+        }
+      } catch {}
+    }
+
     try {
       return await this.request<{ user: UserProfile; isDevFallback?: boolean }>('/auth/session');
     } catch {
@@ -248,7 +443,10 @@ class ApiService {
         method: 'POST',
         body: JSON.stringify({ projectId, options, settings }),
       });
-    } catch {
+    } catch (err: any) {
+      if (settings?.provider === 'ollama') {
+        throw new Error(`Ollama story generation failed: ${err.message || 'Studio Express API is unreachable.'}`);
+      }
       return clientRepository.generateStory(projectId, options, settings);
     }
   }
@@ -281,7 +479,10 @@ class ApiService {
         method: 'POST',
         body: JSON.stringify({ projectId, targetDurationSeconds, settings }),
       });
-    } catch {
+    } catch (err: any) {
+      if (settings?.provider === 'ollama') {
+        throw new Error(`Ollama script generation failed: ${err.message || 'Studio Express API is unreachable.'}`);
+      }
       return clientRepository.generateScript(projectId, targetDurationSeconds || 30, settings);
     }
   }
@@ -314,7 +515,10 @@ class ApiService {
         method: 'POST',
         body: JSON.stringify({ projectId, settings }),
       });
-    } catch {
+    } catch (err: any) {
+      if (settings?.provider === 'ollama') {
+        throw new Error(`Ollama scene breakdown failed: ${err.message || 'Studio Express API is unreachable.'}`);
+      }
       return clientRepository.breakdownScenes(projectId, settings);
     }
   }
@@ -418,6 +622,7 @@ class ApiService {
     }
 
     clientRepository.refreshSupabaseClient();
+    this.refreshSupabaseClient();
 
     try {
       return await this.request<any>('/settings', {
@@ -440,18 +645,34 @@ class ApiService {
     }
   }
 
-  // Direct AI Connection Test
+  // AI Connection Test
   async testConnection(settings: Partial<AISettings>): Promise<TestConnectionResponse> {
-    const base = getApiBase();
-    if (base !== '/api') {
+    // For Ollama, connection tests must strictly route through the backend Express API
+    if (settings.provider === 'ollama') {
       try {
         const res = await this.request<TestConnectionResponse>('/settings/test-connection', {
           method: 'POST',
           body: JSON.stringify(settings),
         });
         if (res) return res;
-      } catch {}
+      } catch (err: any) {
+        return {
+          connected: false,
+          provider: 'ollama',
+          model: settings.model || 'llama3.2:3b',
+          latencyMs: 0,
+          message: `Backend API error testing Ollama connection: ${err.message || 'Studio Express API is unreachable.'}`,
+        };
+      }
     }
+
+    try {
+      const res = await this.request<TestConnectionResponse>('/settings/test-connection', {
+        method: 'POST',
+        body: JSON.stringify(settings),
+      });
+      if (res) return res;
+    } catch {}
 
     return this.testAIDirect(settings);
   }

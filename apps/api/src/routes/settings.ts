@@ -79,6 +79,13 @@ const AVAILABLE_MODELS: AIModelOption[] = [
     recommendedFor: ['story', 'script', 'scenes'],
   },
   {
+    id: 'llama3.2:3b',
+    name: 'Llama 3.2 3B (Self-Hosted Ollama · AWS EC2)',
+    provider: 'ollama',
+    contextWindow: 128000,
+    recommendedFor: ['story', 'script', 'scenes'],
+  },
+  {
     id: 'deterministic-mock-v1',
     name: 'Offline Mock AI Engine (Deterministic)',
     provider: 'mock',
@@ -89,7 +96,10 @@ const AVAILABLE_MODELS: AIModelOption[] = [
 
 function buildSafeSettingsResponse() {
   const currentProvider = process.env.MOCK_AI === 'true' ? 'mock' : process.env.AI_PROVIDER || 'openrouter';
-  const defaultModel = process.env.OPENROUTER_DEFAULT_MODEL || 'meta-llama/llama-3.3-70b-instruct:free';
+  const defaultModel =
+    currentProvider === 'ollama'
+      ? process.env.OLLAMA_MODEL || 'llama3.2:3b'
+      : process.env.OPENROUTER_DEFAULT_MODEL || 'meta-llama/llama-3.3-70b-instruct:free';
   const voiceProvider = process.env.VOICE_PROVIDER || 'ai33';
   const isDevDatabase = !isSupabaseConfigured();
 
@@ -101,7 +111,9 @@ function buildSafeSettingsResponse() {
       hasOpenRouterKey: Boolean(process.env.OPENROUTER_API_KEY && !process.env.OPENROUTER_API_KEY.includes('placeholder')),
       hasOpenAIKey: Boolean(process.env.OPENAI_API_KEY && !process.env.OPENAI_API_KEY.includes('placeholder')),
       hasAnthropicKey: Boolean(process.env.ANTHROPIC_API_KEY && !process.env.ANTHROPIC_API_KEY.includes('placeholder')),
-      baseUrl: process.env.OPENAI_BASE_URL || process.env.OPENROUTER_BASE_URL,
+      hasOllama: Boolean(process.env.OLLAMA_BASE_URL || currentProvider === 'ollama'),
+      // Private internal Ollama endpoints remain strictly server-side
+      baseUrl: currentProvider === 'ollama' ? undefined : (process.env.OPENAI_BASE_URL || process.env.OPENROUTER_BASE_URL),
     },
     voice: {
       provider: voiceProvider,

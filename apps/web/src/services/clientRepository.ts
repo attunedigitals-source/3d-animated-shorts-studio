@@ -369,7 +369,17 @@ export class ClientRepository {
     const provider = effectiveSettings.provider || 'openrouter';
     const apiKey = effectiveSettings.apiKey?.trim() || '';
 
-    if (provider === 'mock' || !apiKey || apiKey.includes('placeholder')) {
+    if (provider === 'mock') {
+      return new MockAIAdapter();
+    }
+
+    if (provider === 'ollama') {
+      throw new Error(
+        'Direct browser connections to Ollama are prohibited. All Ollama requests must route through the Studio Express API backend. Please ensure the Express API is running.',
+      );
+    }
+
+    if (!apiKey || apiKey.includes('placeholder')) {
       return new MockAIAdapter();
     }
 

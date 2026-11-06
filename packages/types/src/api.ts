@@ -37,7 +37,7 @@ export interface TestVoiceResponse {
 
 export interface StudioSettingsPayload {
   ai?: {
-    provider?: 'openrouter' | 'openai' | 'anthropic' | 'mock';
+    provider?: 'openrouter' | 'openai' | 'anthropic' | 'ollama' | 'mock';
     model?: string;
     apiKey?: string;
     baseUrl?: string;

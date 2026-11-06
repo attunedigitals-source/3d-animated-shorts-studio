@@ -4,6 +4,7 @@ import {
   extractAndValidateJson,
   MockAIAdapter,
   OpenRouterAIAdapter,
+  OllamaAIAdapter,
   DEFAULT_OPENROUTER_FREE_MODELS,
   getAvailableFreeModels,
   getAIAdapter,
@@ -142,6 +143,111 @@ describe('AI Adapters & JSON Parser', () => {
     it('should fallback to MockAIAdapter if API key is placeholder', () => {
       const adapter = getAIAdapter({ provider: 'openrouter', apiKey: 'placeholder' });
       expect(adapter.providerName).toBe('mock');
+    });
+
+    it('should return OllamaAIAdapter when provider is ollama', () => {
+      const adapter = getAIAdapter({ provider: 'ollama' });
+      expect(adapter.providerName).toBe('ollama');
+    });
+  });
+
+  describe('OllamaAIAdapter', () => {
+    it('should initialize with correct provider name', () => {
+      const adapter = new OllamaAIAdapter();
+      expect(adapter.providerName).toBe('ollama');
+    });
+
+    it('should reject direct browser execution', async () => {
+      const adapter = new OllamaAIAdapter();
+      (globalThis as any).window = {};
+      try {
+        const res = await adapter.testConnection();
+        expect(res.connected).toBe(false);
+        expect(res.message).toMatch(/Direct browser connection to Ollama is prohibited/i);
+      } finally {
+        delete (globalThis as any).window;
+      }
+    });
+
+    it('should handle unreachable endpoint in testConnection gracefully', async () => {
+      const adapter = new OllamaAIAdapter();
+      // Using a non-existent port to simulate connection failure
+      const res = await adapter.testConnection({
+        baseUrl: 'http://127.0.0.1:59999',
+        model: 'llama3.2:3b',
+        timeoutMs: 1500,
+      });
+
+      expect(res.connected).toBe(false);
+      expect(res.provider).toBe('ollama');
+      expect(res.model).toBe('llama3.2:3b');
+      expect(res.message).toBeDefined();
+    });
+
+    it('should parse valid story response from Ollama chat completion', async () => {
+      const adapter = new OllamaAIAdapter();
+      const mockStoryJson = {
+        title: 'Glitter Spark',
+        logline: 'A tiny dragon sneezes glitter.',
+        premise: 'A dragon who creates sparkle rather than fire.',
+        beginning: 'Pip the dragon wakes up in a sparkling cave.',
+        mainConflict: 'The kingdom is threatened by shadowy gloom.',
+        turningPoints: ['Pip tries to roar but unleashes fairy sparkles.'],
+        climax: 'Pip sneezes an enormous glitter explosion that illuminates the dark.',
+        ending: 'The kingdom celebrates the sparkling savior.',
+        characterDescriptions: [
+          {
+            name: 'Pip',
+            role: 'Protagonist',
+            personality: 'Cute and self-conscious',
+            appearance: 'Chubby violet scales with big amber eyes',
+            visualDistinctives: 'Glitter dusting on snout',
+          },
+        ],
+        emotionalProgression: 'Insecure -> Humiliated -> Brave -> Celebrated',
+      };
+
+      const originalFetch = globalThis.fetch;
+      try {
+        globalThis.fetch = (async (url: any, opts: any) => {
+          expect(String(url)).toBe('http://127.0.0.1:11434/api/chat');
+          const body = JSON.parse(opts.body);
+          expect(body.model).toBe('llama3.2:3b');
+          expect(body.format).toBe('json');
+
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              model: 'llama3.2:3b',
+              message: { role: 'assistant', content: JSON.stringify(mockStoryJson) },
+              prompt_eval_count: 50,
+              eval_count: 200,
+            }),
+          } as any;
+        }) as any;
+
+        const res = await adapter.generateStory(
+          {
+            topic: 'A tiny dragon who sneezes glitter',
+            category: 'Comedy',
+            targetDurationSeconds: 30,
+            intendedAudience: 'General',
+            tone: 'Humorous',
+            visualStyle: 'Stylized 3D',
+            language: 'English',
+          },
+          { baseUrl: 'http://127.0.0.1:11434', model: 'llama3.2:3b' },
+        );
+
+        expect(res.story.title).toBe('Glitter Spark');
+        expect(res.metadata.provider).toBe('ollama');
+        expect(res.metadata.model).toBe('llama3.2:3b');
+        expect(res.metadata.tokensUsed).toBe(250);
+        expect(res.metadata.status).toBe('success');
+      } finally {
+        globalThis.fetch = originalFetch;
+      }
     });
   });
 

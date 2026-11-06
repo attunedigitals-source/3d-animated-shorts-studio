@@ -269,6 +269,8 @@ export const useStudioStore = create<StudioState>((set, get) => ({
       // If using OpenRouter and model is legacy Claude or not set, default to free Llama 3.3 70B
       if (rawProvider === 'openrouter' && (rawModel === 'anthropic/claude-3.5-sonnet' || !rawModel)) {
         rawModel = 'meta-llama/llama-3.3-70b-instruct:free';
+      } else if (rawProvider === 'ollama' && (!rawModel || rawModel.includes('claude') || rawModel.includes('gpt'))) {
+        rawModel = 'llama3.2:3b';
       }
 
       const effectiveAi = {
@@ -312,6 +314,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
           { id: 'anthropic/claude-3.5-sonnet', name: 'Claude 3.5 Sonnet (Premium)', provider: 'openrouter', tier: 'flagship', description: 'Best-in-class reasoning (requires OpenRouter credits)' },
           { id: 'openai/gpt-4o', name: 'GPT-4o (Premium)', provider: 'openrouter', tier: 'flagship', description: 'Omnimodal flagship (requires OpenRouter credits)' },
           { id: 'claude-3-5-sonnet-20241022', name: 'Claude 3.5 Sonnet (Direct)', provider: 'anthropic', tier: 'flagship', description: 'Direct Anthropic Claude integration' },
+          { id: 'llama3.2:3b', name: 'Llama 3.2 3B (Self-Hosted Ollama · AWS EC2)', provider: 'ollama', tier: 'fast', description: 'Self-hosted Ollama instance running llama3.2:3b on AWS EC2' },
           { id: 'gpt-4o', name: 'GPT-4o (Direct)', provider: 'openai', tier: 'flagship', description: 'Direct OpenAI GPT-4o' },
           { id: 'gpt-4o-mini', name: 'GPT-4o Mini (Direct)', provider: 'openai', tier: 'fast', description: 'Fast, cost-efficient direct OpenAI model' },
           { id: 'mock-story-v1', name: 'Mock Engine V1', provider: 'mock', tier: 'mock', description: 'Instant offline deterministic responses' },

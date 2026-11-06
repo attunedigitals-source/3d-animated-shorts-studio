@@ -4,6 +4,7 @@ export const AIProviderTypeSchema = z.enum([
   'openrouter',
   'openai',
   'anthropic',
+  'ollama',
   'mock',
 ]);
 
