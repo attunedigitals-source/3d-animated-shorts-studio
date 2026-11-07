@@ -573,10 +573,9 @@ class ApiService {
 
       return {
         ai: {
-          provider: ai.provider || 'openrouter',
-          model: ai.model || 'anthropic/claude-3.5-sonnet',
+          provider: ai.provider || 'ollama',
+          model: ai.model || 'llama3.2:3b',
           mockAi: ai.mockAi ?? false,
-          hasOpenRouterKey: Boolean(ai.apiKey),
           hasOpenAIKey: Boolean(ai.apiKey && ai.provider === 'openai'),
           hasAnthropicKey: Boolean(ai.apiKey && ai.provider === 'anthropic'),
           apiKey: ai.apiKey,
@@ -597,16 +596,10 @@ class ApiService {
           supabaseServiceRoleKey: database.supabaseServiceRoleKey || '',
         },
         availableModels: [
-          { id: 'meta-llama/llama-3.3-70b-instruct:free', name: 'Llama 3.3 70B (Free · Auto-Fallback)', provider: 'openrouter', tier: 'flagship', description: 'Zero-cost flagship 70B narrative engine with automatic cascade fallback' },
-          { id: 'google/gemini-2.0-flash-exp:free', name: 'Gemini 2.0 Flash (Free · Auto-Fallback)', provider: 'openrouter', tier: 'fast', description: 'Zero-cost ultra-fast high-context narrative generation' },
-          { id: 'deepseek/deepseek-r1:free', name: 'DeepSeek R1 (Free · Auto-Fallback)', provider: 'openrouter', tier: 'flagship', description: 'Zero-cost deep reasoning model for intricate plots' },
-          { id: 'qwen/qwen-2.5-72b-instruct:free', name: 'Qwen 2.5 72B (Free · Auto-Fallback)', provider: 'openrouter', tier: 'standard', description: 'Zero-cost rich dialogue and character generation' },
-          { id: 'meta-llama/llama-3.2-3b-instruct:free', name: 'Llama 3.2 3B (Free · Fast)', provider: 'openrouter', tier: 'fast', description: 'Zero-cost lightweight rapid fallback engine' },
-          { id: 'anthropic/claude-3.5-sonnet', name: 'Claude 3.5 Sonnet (Premium)', provider: 'openrouter', tier: 'flagship', description: 'Best-in-class reasoning (requires OpenRouter credits)' },
-          { id: 'openai/gpt-4o', name: 'GPT-4o (Premium)', provider: 'openrouter', tier: 'flagship', description: 'Omnimodal flagship (requires OpenRouter credits)' },
-          { id: 'claude-3-5-sonnet-20241022', name: 'Claude 3.5 Sonnet (Direct)', provider: 'anthropic', tier: 'flagship', description: 'Direct Anthropic Claude integration' },
+          { id: 'llama3.2:3b', name: 'Llama 3.2 3B (Self-Hosted Ollama · AWS EC2)', provider: 'ollama', tier: 'fast', description: 'Self-hosted Ollama instance running llama3.2:3b on AWS EC2' },
           { id: 'gpt-4o', name: 'GPT-4o (Direct)', provider: 'openai', tier: 'flagship', description: 'Direct OpenAI GPT-4o' },
           { id: 'gpt-4o-mini', name: 'GPT-4o Mini (Direct)', provider: 'openai', tier: 'fast', description: 'Fast, cost-efficient direct OpenAI model' },
+          { id: 'claude-3-5-sonnet-20241022', name: 'Claude 3.5 Sonnet (Direct)', provider: 'anthropic', tier: 'flagship', description: 'Direct Anthropic Claude integration' },
           { id: 'mock-story-v1', name: 'Mock Engine V1', provider: 'mock', tier: 'mock', description: 'Instant offline deterministic responses' },
         ],
       };
@@ -678,8 +671,8 @@ class ApiService {
   }
 
   async testAIDirect(settings: Partial<AISettings>): Promise<TestConnectionResponse> {
-    const provider = settings.provider || 'openrouter';
-    const model = settings.model || 'anthropic/claude-3.5-sonnet';
+    const provider = settings.provider || 'ollama';
+    const model = settings.model || 'llama3.2:3b';
     const apiKey = settings.apiKey?.trim();
 
     if (provider === 'mock') {
@@ -703,45 +696,6 @@ class ApiService {
     }
 
     const start = Date.now();
-
-    if (provider === 'openrouter') {
-      try {
-        const res = await fetch('https://openrouter.ai/api/v1/auth/key', {
-          headers: {
-            Authorization: `Bearer ${apiKey}`,
-          },
-        });
-        const latency = Date.now() - start;
-        const data = await res.json().catch(() => ({}));
-
-        if (res.ok && data?.data) {
-          const label = data.data.label ? ` (${data.data.label})` : '';
-          return {
-            connected: true,
-            provider: 'openrouter',
-            model,
-            latencyMs: latency,
-            message: `Connected to OpenRouter successfully${label}! Key is active and authorized.`,
-          };
-        } else {
-          return {
-            connected: false,
-            provider: 'openrouter',
-            model,
-            latencyMs: latency,
-            message: data?.error?.message || `OpenRouter returned status ${res.status}: Unauthorized.`,
-          };
-        }
-      } catch (err: any) {
-        return {
-          connected: false,
-          provider: 'openrouter',
-          model,
-          latencyMs: Date.now() - start,
-          message: `Network error connecting to OpenRouter: ${err.message}`,
-        };
-      }
-    }
 
     if (provider === 'openai') {
       try {

@@ -69,12 +69,7 @@ export const SettingsView: React.FC = () => {
     {
       id: 'ollama',
       name: 'Ollama (Self-Hosted AWS EC2)',
-      desc: 'Private self-hosted Ollama instance running llama3.2:3b on AWS EC2.',
-    },
-    {
-      id: 'openrouter',
-      name: 'OpenRouter Free Tier & Auto-Fallback',
-      desc: 'Automatic free models (Llama 3.3, Gemini 2.0, DeepSeek R1) with instant cascade fallback.',
+      desc: 'Primary private LLM running llama3.2:3b directly on AWS EC2 backend.',
     },
     {
       id: 'openai',
@@ -106,7 +101,7 @@ export const SettingsView: React.FC = () => {
     } catch (err: any) {
       setAiTestResult({
         connected: false,
-        provider: aiSettings.provider || 'openrouter',
+        provider: aiSettings.provider || 'ollama',
         model: aiSettings.model || 'default',
         latencyMs: 0,
         message: err.message || 'AI Connection test failed',
@@ -244,7 +239,6 @@ export const SettingsView: React.FC = () => {
                   onClick={() => {
                     const defaultModels: Record<AIProviderType, string> = {
                       ollama: 'llama3.2:3b',
-                      openrouter: 'meta-llama/llama-3.3-70b-instruct:free',
                       openai: 'gpt-4o',
                       anthropic: 'claude-3-5-sonnet-20241022',
                       mock: 'mock-story-v1',

@@ -7,7 +7,6 @@ export * from './types';
 export * from './parser';
 export * from './prompts';
 export * from './mock-adapter';
-export * from './openrouter-adapter';
 export * from './openai-adapter';
 export * from './anthropic-adapter';
 export * from './ollama-adapter';

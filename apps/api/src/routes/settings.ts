@@ -9,51 +9,9 @@ const router = Router();
 // Available curated models list
 const AVAILABLE_MODELS: AIModelOption[] = [
   {
-    id: 'meta-llama/llama-3.3-70b-instruct:free',
-    name: 'Llama 3.3 70B (Free · Auto-Fallback)',
-    provider: 'openrouter',
-    contextWindow: 128000,
-    recommendedFor: ['story', 'script', 'scenes'],
-  },
-  {
-    id: 'google/gemini-2.0-flash-exp:free',
-    name: 'Gemini 2.0 Flash (Free · Auto-Fallback)',
-    provider: 'openrouter',
-    contextWindow: 1000000,
-    recommendedFor: ['story', 'script', 'scenes'],
-  },
-  {
-    id: 'deepseek/deepseek-r1:free',
-    name: 'DeepSeek R1 (Free · Auto-Fallback)',
-    provider: 'openrouter',
-    contextWindow: 64000,
-    recommendedFor: ['story', 'script', 'scenes'],
-  },
-  {
-    id: 'qwen/qwen-2.5-72b-instruct:free',
-    name: 'Qwen 2.5 72B (Free · Auto-Fallback)',
-    provider: 'openrouter',
-    contextWindow: 32000,
-    recommendedFor: ['story', 'script', 'scenes'],
-  },
-  {
-    id: 'meta-llama/llama-3.2-3b-instruct:free',
-    name: 'Llama 3.2 3B (Free · Fast)',
-    provider: 'openrouter',
-    contextWindow: 128000,
-    recommendedFor: ['script', 'scenes'],
-  },
-  {
-    id: 'anthropic/claude-3.5-sonnet',
-    name: 'Claude 3.5 Sonnet (Premium)',
-    provider: 'openrouter',
-    contextWindow: 200000,
-    recommendedFor: ['story', 'script', 'scenes'],
-  },
-  {
-    id: 'openai/gpt-4o',
-    name: 'GPT-4o (Premium)',
-    provider: 'openrouter',
+    id: 'llama3.2:3b',
+    name: 'Llama 3.2 3B (Self-Hosted Ollama · AWS EC2)',
+    provider: 'ollama',
     contextWindow: 128000,
     recommendedFor: ['story', 'script', 'scenes'],
   },
@@ -79,13 +37,6 @@ const AVAILABLE_MODELS: AIModelOption[] = [
     recommendedFor: ['story', 'script', 'scenes'],
   },
   {
-    id: 'llama3.2:3b',
-    name: 'Llama 3.2 3B (Self-Hosted Ollama · AWS EC2)',
-    provider: 'ollama',
-    contextWindow: 128000,
-    recommendedFor: ['story', 'script', 'scenes'],
-  },
-  {
     id: 'deterministic-mock-v1',
     name: 'Offline Mock AI Engine (Deterministic)',
     provider: 'mock',
@@ -95,11 +46,8 @@ const AVAILABLE_MODELS: AIModelOption[] = [
 ];
 
 function buildSafeSettingsResponse() {
-  const currentProvider = process.env.MOCK_AI === 'true' ? 'mock' : process.env.AI_PROVIDER || 'openrouter';
-  const defaultModel =
-    currentProvider === 'ollama'
-      ? process.env.OLLAMA_MODEL || 'llama3.2:3b'
-      : process.env.OPENROUTER_DEFAULT_MODEL || 'meta-llama/llama-3.3-70b-instruct:free';
+  const currentProvider = process.env.MOCK_AI === 'true' ? 'mock' : process.env.AI_PROVIDER || 'ollama';
+  const defaultModel = process.env.OLLAMA_MODEL || 'llama3.2:3b';
   const voiceProvider = process.env.VOICE_PROVIDER || 'ai33';
   const isDevDatabase = !isSupabaseConfigured();
 
@@ -108,12 +56,11 @@ function buildSafeSettingsResponse() {
       provider: currentProvider,
       model: defaultModel,
       mockAi: process.env.MOCK_AI === 'true',
-      hasOpenRouterKey: Boolean(process.env.OPENROUTER_API_KEY && !process.env.OPENROUTER_API_KEY.includes('placeholder')),
       hasOpenAIKey: Boolean(process.env.OPENAI_API_KEY && !process.env.OPENAI_API_KEY.includes('placeholder')),
       hasAnthropicKey: Boolean(process.env.ANTHROPIC_API_KEY && !process.env.ANTHROPIC_API_KEY.includes('placeholder')),
       hasOllama: Boolean(process.env.OLLAMA_BASE_URL || currentProvider === 'ollama'),
       // Private internal Ollama endpoints remain strictly server-side
-      baseUrl: currentProvider === 'ollama' ? undefined : (process.env.OPENAI_BASE_URL || process.env.OPENROUTER_BASE_URL),
+      baseUrl: currentProvider === 'ollama' ? undefined : process.env.OPENAI_BASE_URL,
     },
     voice: {
       provider: voiceProvider,

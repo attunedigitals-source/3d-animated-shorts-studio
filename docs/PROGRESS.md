@@ -37,7 +37,7 @@ This document tracks the live implementation status of the 3D Animated Shorts St
 ### Phase 1: Project Foundation & AI Story Engine (Completed & Verified)
 - [x] Install base dependencies across workspaces (`pnpm install`).
 - [x] Implement `@studio/types` domain models and Zod schemas (`StoryPromptOptionsSchema`, `StoryDocumentSchema`, `ScriptDocumentSchema`, `StructuredSceneSchema`, `CreateProjectSchema`, `AI33VoiceSchema`, `AI33DialogueRequestSchema`, `StudioSettingsPayload`).
-- [x] Implement `@studio/ai-adapters` (OpenRouter, OpenAI-compatible, Anthropic, Mock AI adapter, markdown-fence-stripping JSON parser, ai33.pro voice adapter).
+- [x] Implement `@studio/ai-adapters` (Self-hosted Ollama on AWS EC2, OpenAI-compatible, Anthropic, Mock AI adapter, markdown-fence-stripping JSON parser, ai33.pro voice adapter).
 - [x] Implement `@studio/database` schema migration scripts (`001_phase1_schema.sql` with RLS), dual repository (Supabase production client + DevDatabaseRepository local persistent fallback), and Supabase connection tester (`testSupabaseConnection`).
 - [x] Implement `apps/api` Express backend with authentication middleware, project CRUD, story generation, script generation, scene breakdown, dynamic settings manager (`POST /api/settings`), and live connection testing for AI, ai33.pro voice, and Supabase.
 - [x] Implement `apps/web` desktop-first creative studio UI in React 18, Vite, Tailwind CSS, and Zustand (Dashboard, Projects, AI Story Studio, Script Editor, Scene Breakdown, and complete In-App Settings Manager with credential editing, password masks, and live connection testing for AI, ai33.pro, and Supabase).

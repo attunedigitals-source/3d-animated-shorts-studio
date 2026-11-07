@@ -1,7 +1,6 @@
 import { AISettings, AIProviderType } from '@studio/types';
 import { IAIProviderAdapter } from './types';
 import { MockAIAdapter } from './mock-adapter';
-import { OpenRouterAIAdapter } from './openrouter-adapter';
 import { OpenAICompatibleAdapter } from './openai-adapter';
 import { AnthropicAIAdapter } from './anthropic-adapter';
 import { OllamaAIAdapter } from './ollama-adapter';
@@ -24,18 +23,11 @@ export function getAIAdapter(settings?: Partial<AISettings>): IAIProviderAdapter
     return new MockAIAdapter();
   }
 
-  const provider: AIProviderType = settings?.provider || (getEnv('AI_PROVIDER') as AIProviderType) || 'openrouter';
+  const provider: AIProviderType = settings?.provider || (getEnv('AI_PROVIDER') as AIProviderType) || 'ollama';
 
   switch (provider) {
-    case 'openrouter': {
-      const apiKey = settings?.apiKey || getEnv('OPENROUTER_API_KEY');
-      if (!apiKey || apiKey.includes('placeholder')) {
-        console.warn(
-          '[AI Adapters] OpenRouter API key not configured or is placeholder. Using MockAIAdapter for local execution.',
-        );
-        return new MockAIAdapter();
-      }
-      return new OpenRouterAIAdapter();
+    case 'ollama': {
+      return new OllamaAIAdapter();
     }
     case 'openai': {
       return new OpenAICompatibleAdapter();
@@ -49,9 +41,6 @@ export function getAIAdapter(settings?: Partial<AISettings>): IAIProviderAdapter
         return new MockAIAdapter();
       }
       return new AnthropicAIAdapter();
-    }
-    case 'ollama': {
-      return new OllamaAIAdapter();
     }
     case 'mock':
     default:

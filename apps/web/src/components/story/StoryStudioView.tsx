@@ -272,7 +272,7 @@ export const StoryStudioView: React.FC = () => {
                   AI Model
                 </span>
                 <span className="text-[10px] text-indigo-400 font-mono bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20 capitalize">
-                  {aiSettings.provider || 'openrouter'}
+                  {aiSettings.provider || 'ollama'}
                 </span>
               </label>
               <select

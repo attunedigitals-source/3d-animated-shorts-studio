@@ -132,7 +132,9 @@ CMD ["node", "dist/index.js"]
 | `SUPABASE_ANON_KEY` | Web | Client anon key |
 | `SUPABASE_SERVICE_ROLE_KEY` | API, Worker | Service role key for administrative operations |
 | `REDIS_HOST`, `REDIS_PORT`, `REDIS_PASSWORD` | API, Worker | BullMQ connection credentials |
-| `OPENROUTER_API_KEY` | API | AI story and prompt generation key |
+| `OLLAMA_BASE_URL` | API | Local Ollama endpoint on EC2 (`http://127.0.0.1:11434`) |
+| `OLLAMA_MODEL` | API | Ollama model name (`llama3.2:3b`) |
+| `OLLAMA_API_KEY` | API | Optional bearer key if Ollama reverse proxy requires auth |
 | `AI33_API_KEY` | API | `ai33.pro` speech synthesis & dialogue key |
 | `STORAGE_PROVIDER` | API, Worker | `supabase` or `s3` in production |
 | `WORKER_CONCURRENCY` | Worker | Number of simultaneous render jobs (default: 2) |

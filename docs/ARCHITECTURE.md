@@ -8,7 +8,7 @@ The system is designed with strict enterprise-grade boundaries:
 - **No Client-Side Video Rendering:** All intensive frame composition, 3D rasterization, and FFmpeg encoding happen in dedicated background worker processes.
 - **Genuine 3D Animation:** Scenes use actual Three.js meshes, bones, rigs, blend shapes, and keyframed camera paths, avoiding static 2D slideshows or image cross-fading.
 - **Zero Fabricated Functionality:** Every progress bar, state change, and status report reflects real backend and worker events.
-- **Provider Agnosticism:** AI reasoning and voice synthesis use pluggable adapters (OpenRouter, ai33.pro Unified v3, OpenAI, Anthropic, or deterministic offline mock adapters).
+- **Provider Agnosticism:** AI reasoning and voice synthesis use pluggable adapters (self-hosted AWS Ollama, ai33.pro Unified v3, OpenAI, Anthropic, or deterministic offline mock adapters).
 - **Strict Secrets Isolation:** Private provider keys and database service roles are confined to the backend and worker processes; the client bundle receives zero secrets.
 
 ---
@@ -41,10 +41,10 @@ flowchart TD
 
     subgraph ServiceIntegrations ["3. External Integrations & Adapters"]
         AIAdapters["@studio/ai-adapters"]
-        OpenRouter["OpenRouter / LLM APIs"]
+        OllamaLLM["Self-Hosted Ollama (AWS EC2 / llama3.2:3b)"]
         AI33Voice["ai33.pro Voice API (ElevenLabs / Minimax / Edge / Kokoro)"]
         MockEngines["Offline Mock Engines"]
-        AIAdapters --> OpenRouter
+        AIAdapters --> OllamaLLM
         AIAdapters --> AI33Voice
         AIAdapters --> MockEngines
     end
@@ -128,8 +128,8 @@ The system is decomposed into nine specialized domains:
 ### 3.5. AI Reasoning & Story Engine (`packages/ai-adapters`)
 - **Technology:** Provider-independent LLM client layer with Zod schema extraction.
 - **Supported Providers:**
-  - **OpenRouter Adapter:** Multi-model access (Claude 3.5 Sonnet, GPT-4o, Llama 3) with fallback triggers.
-  - **OpenAI & Anthropic Fallbacks:** Direct API connectors if OpenRouter is unreachable.
+  - **Self-Hosted Ollama Adapter (Primary):** Connects to the local/private Ollama daemon on AWS EC2 running `llama3.2:3b`.
+  - **OpenAI & Anthropic Fallbacks:** Direct API connectors for optional cloud fallback.
   - **Deterministic Mock Engine:** Generates complete, high-quality script documents offline without external network calls or costs.
 - **Reliability:** Automated markdown fence stripping, JSON schema repair, and retry policies.
 
@@ -234,7 +234,7 @@ sequenceDiagram
 ## 5. Security Architecture & Secrets Isolation
 
 1. **Client Isolation:** `apps/web` is compiled with Vite. Only environment variables prefixed with `VITE_` are bundled into client code.
-2. **Secret Containment:** Provider API keys (`OPENROUTER_API_KEY`, `AI33_API_KEY`, `SUPABASE_SERVICE_ROLE_KEY`) are exclusively accessible to `apps/api` and `apps/worker` via runtime environment variables.
+2. **Secret Containment:** Provider API keys (`OLLAMA_API_KEY`, `AI33_API_KEY`, `SUPABASE_SERVICE_ROLE_KEY`) are exclusively accessible to `apps/api` and `apps/worker` via runtime environment variables.
 3. **Database Row Level Security (RLS):** Supabase database tables enforce RLS policies tied to the authenticated user ID. The backend API uses the `service_role` key strictly when executing authorized system operations.
 4. **CORS & Rate Limiting:** The backend API restricts origins to authorized client domains and implements strict rate limits on AI generation and render triggers.
 

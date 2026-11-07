@@ -1,22 +1,21 @@
 import { z } from 'zod';
 
 export const AIProviderTypeSchema = z.enum([
-  'openrouter',
+  'ollama',
   'openai',
   'anthropic',
-  'ollama',
   'mock',
 ]);
 
 export type AIProviderType = z.infer<typeof AIProviderTypeSchema>;
 
 export const AISettingsSchema = z.object({
-  provider: AIProviderTypeSchema.default('openrouter'),
-  model: z.string().default('anthropic/claude-3.5-sonnet'),
+  provider: AIProviderTypeSchema.default('ollama'),
+  model: z.string().default('llama3.2:3b'),
   apiKey: z.string().optional(),
   baseUrl: z.string().optional(),
   temperature: z.number().min(0).max(2).default(0.7),
-  timeoutMs: z.number().positive().default(60000),
+  timeoutMs: z.number().positive().default(180000),
   mockAi: z.boolean().default(false),
 });
 

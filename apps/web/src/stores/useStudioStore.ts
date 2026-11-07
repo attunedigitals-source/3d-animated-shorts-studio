@@ -127,8 +127,8 @@ export const useStudioStore = create<StudioState>((set, get) => ({
   },
 
   aiSettings: {
-    provider: 'openrouter',
-    model: 'meta-llama/llama-3.3-70b-instruct:free',
+    provider: 'ollama',
+    model: 'llama3.2:3b',
   },
   availableModels: [],
   isSupabaseConfigured: false,
@@ -264,12 +264,12 @@ export const useStudioStore = create<StudioState>((set, get) => ({
         set({ user: session.user, isDevAuth: Boolean(session.isDevFallback) });
       }
 
-      const rawProvider = localAi.provider || settingsRes?.ai?.provider || 'openrouter';
-      let rawModel = localAi.model || settingsRes?.ai?.model || 'meta-llama/llama-3.3-70b-instruct:free';
-      // If using OpenRouter and model is legacy Claude or not set, default to free Llama 3.3 70B
-      if (rawProvider === 'openrouter' && (rawModel === 'anthropic/claude-3.5-sonnet' || !rawModel)) {
-        rawModel = 'meta-llama/llama-3.3-70b-instruct:free';
-      } else if (rawProvider === 'ollama' && (!rawModel || rawModel.includes('claude') || rawModel.includes('gpt'))) {
+      const validProviders = ['ollama', 'openai', 'anthropic', 'mock'];
+      const rawProvider = validProviders.includes(localAi.provider)
+        ? localAi.provider
+        : (settingsRes?.ai?.provider || 'ollama');
+      let rawModel = localAi.model || settingsRes?.ai?.model || 'llama3.2:3b';
+      if (!rawModel || rawModel.includes(':free') || rawModel.includes('/')) {
         rawModel = 'llama3.2:3b';
       }
 
@@ -306,17 +306,10 @@ export const useStudioStore = create<StudioState>((set, get) => ({
         supabaseSettings: effectiveDb,
         isSupabaseConfigured,
         availableModels: settingsRes?.availableModels || [
-          { id: 'meta-llama/llama-3.3-70b-instruct:free', name: 'Llama 3.3 70B (Free · Auto-Fallback)', provider: 'openrouter', tier: 'flagship', description: 'Zero-cost flagship 70B narrative engine with automatic cascade fallback' },
-          { id: 'google/gemini-2.0-flash-exp:free', name: 'Gemini 2.0 Flash (Free · Auto-Fallback)', provider: 'openrouter', tier: 'fast', description: 'Zero-cost ultra-fast high-context narrative generation' },
-          { id: 'deepseek/deepseek-r1:free', name: 'DeepSeek R1 (Free · Auto-Fallback)', provider: 'openrouter', tier: 'flagship', description: 'Zero-cost deep reasoning model for intricate plots' },
-          { id: 'qwen/qwen-2.5-72b-instruct:free', name: 'Qwen 2.5 72B (Free · Auto-Fallback)', provider: 'openrouter', tier: 'standard', description: 'Zero-cost rich dialogue and character generation' },
-          { id: 'meta-llama/llama-3.2-3b-instruct:free', name: 'Llama 3.2 3B (Free · Fast)', provider: 'openrouter', tier: 'fast', description: 'Zero-cost lightweight rapid fallback engine' },
-          { id: 'anthropic/claude-3.5-sonnet', name: 'Claude 3.5 Sonnet (Premium)', provider: 'openrouter', tier: 'flagship', description: 'Best-in-class reasoning (requires OpenRouter credits)' },
-          { id: 'openai/gpt-4o', name: 'GPT-4o (Premium)', provider: 'openrouter', tier: 'flagship', description: 'Omnimodal flagship (requires OpenRouter credits)' },
-          { id: 'claude-3-5-sonnet-20241022', name: 'Claude 3.5 Sonnet (Direct)', provider: 'anthropic', tier: 'flagship', description: 'Direct Anthropic Claude integration' },
           { id: 'llama3.2:3b', name: 'Llama 3.2 3B (Self-Hosted Ollama · AWS EC2)', provider: 'ollama', tier: 'fast', description: 'Self-hosted Ollama instance running llama3.2:3b on AWS EC2' },
           { id: 'gpt-4o', name: 'GPT-4o (Direct)', provider: 'openai', tier: 'flagship', description: 'Direct OpenAI GPT-4o' },
           { id: 'gpt-4o-mini', name: 'GPT-4o Mini (Direct)', provider: 'openai', tier: 'fast', description: 'Fast, cost-efficient direct OpenAI model' },
+          { id: 'claude-3-5-sonnet-20241022', name: 'Claude 3.5 Sonnet (Direct)', provider: 'anthropic', tier: 'flagship', description: 'Direct Anthropic Claude integration' },
           { id: 'mock-story-v1', name: 'Mock Engine V1', provider: 'mock', tier: 'mock', description: 'Instant offline deterministic responses' },
         ],
       });

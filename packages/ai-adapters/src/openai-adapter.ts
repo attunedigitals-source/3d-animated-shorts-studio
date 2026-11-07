@@ -30,7 +30,7 @@ export class OpenAICompatibleAdapter implements IAIProviderAdapter {
     const baseUrl = settings?.baseUrl || getEnv('OPENAI_BASE_URL') || 'https://api.openai.com/v1';
     let model = settings?.model || getEnv('OPENAI_DEFAULT_MODEL') || 'gpt-4o';
 
-    // Guard: If pointing to official OpenAI API and model has OpenRouter/Anthropic format or invalid prefix, default to gpt-4o
+    // Guard: If pointing to official OpenAI API and model has Anthropic/Ollama format or invalid prefix, default to gpt-4o
     if (baseUrl.includes('api.openai.com') && (model.includes('/') || model.includes('claude') || model.includes('llama') || model.includes('gemini') || model.includes('mock'))) {
       model = 'gpt-4o';
     }

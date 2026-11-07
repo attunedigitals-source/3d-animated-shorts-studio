@@ -2,7 +2,7 @@
  * Client-Side Direct Repository & AI Execution Engine
  *
  * Provides direct browser-side data persistence (via Supabase client or LocalStorage)
- * and direct AI story/script/scene generation (via OpenRouter or deterministic Mock engine)
+ * and direct AI story/script/scene generation (via direct OpenAI/Anthropic or deterministic Mock engine)
  * when running in standalone web mode or when the backend server is unreachable.
  */
 
@@ -22,7 +22,6 @@ import {
   AISettings,
 } from '@studio/types';
 import {
-  OpenRouterAIAdapter,
   OpenAICompatibleAdapter,
   AnthropicAIAdapter,
   MockAIAdapter,
@@ -286,7 +285,7 @@ export class ClientRepository {
         if (input.preferences) updateData.preferences = input.preferences;
 
         await this.supabaseClient.from('projects').update(updateData).eq('id', projectId);
-      } catch {}
+      } catch { }
     }
 
     if (typeof localStorage !== 'undefined') {
@@ -340,7 +339,7 @@ export class ClientRepository {
     if (this.supabaseClient) {
       try {
         await this.supabaseClient.from('projects').delete().eq('id', projectId);
-      } catch {}
+      } catch { }
     }
 
     if (typeof localStorage !== 'undefined') {
@@ -363,10 +362,10 @@ export class ClientRepository {
       try {
         const stored = JSON.parse(localStorage.getItem('studio_ai_settings') || '{}');
         effectiveSettings = { ...stored, ...effectiveSettings };
-      } catch {}
+      } catch { }
     }
 
-    const provider = effectiveSettings.provider || 'openrouter';
+    const provider = effectiveSettings.provider || 'ollama';
     const apiKey = effectiveSettings.apiKey?.trim() || '';
 
     if (provider === 'mock') {
@@ -391,7 +390,7 @@ export class ClientRepository {
       return new AnthropicAIAdapter();
     }
 
-    return new OpenRouterAIAdapter();
+    return new MockAIAdapter();
   }
 
   async generateStory(
@@ -404,7 +403,7 @@ export class ClientRepository {
       try {
         const stored = JSON.parse(localStorage.getItem('studio_ai_settings') || '{}');
         effectiveSettings = { ...stored, ...effectiveSettings };
-      } catch {}
+      } catch { }
     }
 
     const adapter = this.getAIAdapterInstance(effectiveSettings);
@@ -456,7 +455,7 @@ export class ClientRepository {
           },
           updated_at: now,
         });
-      } catch {}
+      } catch { }
     }
 
     if (typeof localStorage !== 'undefined') {
@@ -486,7 +485,7 @@ export class ClientRepository {
       try {
         const stored = JSON.parse(localStorage.getItem('studio_ai_settings') || '{}');
         effectiveSettings = { ...stored, ...effectiveSettings };
-      } catch {}
+      } catch { }
     }
 
     const project = await this.getProject(projectId);
@@ -533,7 +532,7 @@ export class ClientRepository {
           total_estimated_duration_seconds: script.totalEstimatedDurationSeconds,
           updated_at: now,
         });
-      } catch {}
+      } catch { }
     }
 
     if (typeof localStorage !== 'undefined') {
@@ -560,7 +559,7 @@ export class ClientRepository {
       try {
         const stored = JSON.parse(localStorage.getItem('studio_ai_settings') || '{}');
         effectiveSettings = { ...stored, ...effectiveSettings };
-      } catch {}
+      } catch { }
     }
 
     const project = await this.getProject(projectId);
@@ -594,7 +593,7 @@ export class ClientRepository {
             })),
           );
         }
-      } catch {}
+      } catch { }
     }
 
     if (typeof localStorage !== 'undefined') {

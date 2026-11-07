@@ -11,7 +11,7 @@
 | **Video Processing** | FFmpeg & FFprobe | FFmpeg 6.x+ | H.264/AAC muxing, audio filter graphs, MP4 packaging |
 | **Queue & Cache** | Redis & BullMQ | Redis 7.x, BullMQ 5.x | Distributed asynchronous rendering job queue |
 | **Database & Auth** | Supabase (PostgreSQL) | Supabase JS 2.x | Relational persistence, JSONB scene specs, asset storage |
-| **AI Language** | OpenRouter (or OpenAI/Anthropic) | REST API | Multi-model script generation and scene breakdown |
+| **AI Language** | Self-Hosted Ollama on AWS EC2 (or OpenAI/Anthropic) | REST API | Self-hosted llama3.2:3b script generation and scene breakdown |
 | **AI Voice** | ai33.pro (Unified v3) | REST API | Character voice synthesis (ElevenLabs, Minimax, Clone, Edge, Kokoro, Vbee, FishAudio) & multi-speaker dialogue |
 
 ---
@@ -42,7 +42,7 @@
   2. Implement `webglcontextlost` and `webglcontextrestored` event listeners in `@studio/web` to reload the 3D scene cleanly without losing state.
 
 ### 2.4. AI Model Variability & Structured Schema Conformance
-- **Challenge:** LLM responses can occasionally contain conversational filler, markdown formatting bugs, or altered JSON keys, especially across different models on OpenRouter.
+- **Challenge:** LLM responses can occasionally contain conversational filler, markdown formatting bugs, or altered JSON keys across prompt iterations.
 - **Risk:** Script parsing exceptions and broken scene breakdowns.
 - **Mitigation Strategy:**
   1. Enforce JSON schema validation via Zod (`StoryDocumentSchema`).

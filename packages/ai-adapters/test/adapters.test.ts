@@ -3,10 +3,7 @@ import { z } from 'zod';
 import {
   extractAndValidateJson,
   MockAIAdapter,
-  OpenRouterAIAdapter,
   OllamaAIAdapter,
-  DEFAULT_OPENROUTER_FREE_MODELS,
-  getAvailableFreeModels,
   getAIAdapter,
   MockVoiceAdapter,
   getVoiceAdapter,
@@ -107,47 +104,25 @@ describe('AI Adapters & JSON Parser', () => {
     });
   });
 
-  describe('OpenRouter Free Models & Automatic Fallback', () => {
-    it('should have a curated list of verified free models', () => {
-      expect(DEFAULT_OPENROUTER_FREE_MODELS.length).toBeGreaterThanOrEqual(5);
-      expect(DEFAULT_OPENROUTER_FREE_MODELS.every((m) => m.endsWith(':free'))).toBe(true);
-      expect(DEFAULT_OPENROUTER_FREE_MODELS[0]).toBe('meta-llama/llama-3.3-70b-instruct:free');
-    });
-
-    it('should return available free models list', async () => {
-      const freeModels = await getAvailableFreeModels();
-      expect(freeModels.length).toBeGreaterThanOrEqual(5);
-      expect(freeModels).toContain('meta-llama/llama-3.3-70b-instruct:free');
-      expect(freeModels).toContain('google/gemini-2.0-flash-exp:free');
-    });
-
-    it('should instantiate OpenRouterAIAdapter with provider openrouter', () => {
-      const adapter = new OpenRouterAIAdapter();
-      expect(adapter.providerName).toBe('openrouter');
-    });
-
-    it('should reject connection test when API key is missing', async () => {
-      const adapter = new OpenRouterAIAdapter();
-      const res = await adapter.testConnection({ apiKey: '' });
-      expect(res.connected).toBe(false);
-      expect(res.message).toMatch(/not configured/i);
-    });
-  });
-
   describe('getAIAdapter factory', () => {
     it('should return MockAIAdapter when mockAi is true', () => {
       const adapter = getAIAdapter({ mockAi: true });
       expect(adapter.providerName).toBe('mock');
     });
 
-    it('should fallback to MockAIAdapter if API key is placeholder', () => {
-      const adapter = getAIAdapter({ provider: 'openrouter', apiKey: 'placeholder' });
-      expect(adapter.providerName).toBe('mock');
+    it('should return OllamaAIAdapter by default when no settings provided', () => {
+      const adapter = getAIAdapter();
+      expect(adapter.providerName).toBe('ollama');
     });
 
     it('should return OllamaAIAdapter when provider is ollama', () => {
       const adapter = getAIAdapter({ provider: 'ollama' });
       expect(adapter.providerName).toBe('ollama');
+    });
+
+    it('should fallback to MockAIAdapter if anthropic API key is placeholder', () => {
+      const adapter = getAIAdapter({ provider: 'anthropic', apiKey: 'placeholder' });
+      expect(adapter.providerName).toBe('mock');
     });
   });
 
@@ -245,6 +220,116 @@ describe('AI Adapters & JSON Parser', () => {
         expect(res.metadata.model).toBe('llama3.2:3b');
         expect(res.metadata.tokensUsed).toBe(250);
         expect(res.metadata.status).toBe('success');
+      } finally {
+        globalThis.fetch = originalFetch;
+      }
+    });
+
+    it('should generate script and breakdown scenes through Ollama adapter', async () => {
+      const adapter = new OllamaAIAdapter();
+      const mockStory = {
+        title: 'Glitter Spark',
+        logline: 'A tiny dragon sneezes glitter.',
+        premise: 'A dragon who creates sparkle rather than fire.',
+        beginning: 'Pip the dragon wakes up in a sparkling cave.',
+        mainConflict: 'The kingdom is threatened by shadowy gloom.',
+        turningPoints: ['Pip tries to roar but unleashes fairy sparkles.'],
+        climax: 'Pip sneezes an enormous glitter explosion.',
+        ending: 'The kingdom celebrates the sparkling savior.',
+        characterDescriptions: [
+          {
+            name: 'Pip',
+            role: 'Protagonist',
+            personality: 'Cute and self-conscious',
+            appearance: 'Chubby violet scales with big amber eyes',
+            visualDistinctives: 'Glitter dusting on snout',
+          },
+        ],
+        emotionalProgression: 'Insecure -> Celebrated',
+      };
+
+      const mockScriptJson = {
+        title: 'Glitter Spark',
+        targetDurationSeconds: 30,
+        totalEstimatedDurationSeconds: 30,
+        totalWordCount: 8,
+        scenes: [
+          {
+            sceneNumber: 1,
+            sceneHeading: 'INT. CRYSTAL CAVE - DAY',
+            narration: '',
+            dialogue: [{ characterName: 'Pip', line: 'Achoo!', deliveryInstruction: 'sneezing' }],
+            actionDescriptions: 'Pip sneezes a puff of glitter.',
+            emotionalDirection: 'Startled -> playful',
+            approximateDurationSeconds: 15,
+            estimatedWordCount: 1,
+          },
+          {
+            sceneNumber: 2,
+            sceneHeading: 'EXT. KINGDOM COURTYARD - DAY',
+            narration: 'And the kingdom was saved.',
+            dialogue: [{ characterName: 'Narrator', line: 'And the kingdom was saved.' }],
+            actionDescriptions: 'Villagers gasp as glitter sparkles.',
+            emotionalDirection: 'Amazed celebration',
+            approximateDurationSeconds: 15,
+            estimatedWordCount: 6,
+          },
+        ],
+      };
+
+      const mockScenesJson = [
+        {
+          id: 'scene-1',
+          sceneNumber: 1,
+          sceneTitle: 'Cave Sneeze',
+          sceneDescription: 'Pip sneezes glitter inside the crystal cave.',
+          environmentDescription: 'Sparkling crystal cavern with violet stalactites',
+          emotionalTone: 'Curious and playful',
+          cameraDirectionSuggestions: 'Close up dolly in',
+          approximateDurationSeconds: 15,
+          propsRequired: ['Glitter dust particles'],
+        },
+        {
+          id: 'scene-2',
+          sceneNumber: 2,
+          sceneTitle: 'Courtyard Celebration',
+          sceneDescription: 'Townspeople celebrate glitter covering the square.',
+          environmentDescription: 'Cobblestone medieval square with cheering cartoon townspeople',
+          emotionalTone: 'Festive joy',
+          cameraDirectionSuggestions: 'Wide overhead crane shot',
+          approximateDurationSeconds: 15,
+          propsRequired: ['Ribbons', 'Glitter confetti'],
+        },
+      ];
+
+      const originalFetch = globalThis.fetch;
+      try {
+        globalThis.fetch = (async (url: any, opts: any) => {
+          const body = JSON.parse(opts.body);
+          const isScenes = body.messages[1].content.includes('Break down this animated script');
+          const responsePayload = isScenes ? mockScenesJson : mockScriptJson;
+
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              model: 'llama3.2:3b',
+              message: { role: 'assistant', content: JSON.stringify(responsePayload) },
+              prompt_eval_count: 60,
+              eval_count: 180,
+            }),
+          } as any;
+        }) as any;
+
+        const scriptRes = await adapter.generateScript(mockStory, 30);
+        expect(scriptRes.script.title).toBe('Glitter Spark');
+        expect(scriptRes.script.scenes.length).toBe(2);
+        expect(scriptRes.metadata.provider).toBe('ollama');
+
+        const scenesRes = await adapter.breakdownScenes(scriptRes.script, mockStory);
+        expect(scenesRes.scenes.length).toBe(2);
+        expect(scenesRes.scenes[0]!.environmentDescription).toContain('crystal cavern');
+        expect(scenesRes.metadata.provider).toBe('ollama');
       } finally {
         globalThis.fetch = originalFetch;
       }

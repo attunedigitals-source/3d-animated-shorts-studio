@@ -15,7 +15,7 @@ Establish the operational monorepo infrastructure, database migrations, base typ
 - Fully configured monorepo workspace (`pnpm`, `turbo`, strict TypeScript configuration).
 - Initialized Supabase schema (`projects`, `stories`, `scenes`, `characters`).
 - `@studio/types`: Core data models and Zod validation schemas for stories and scripts.
-- `@studio/ai-adapters`: OpenRouter adapter, OpenAI/Anthropic fallback adapters, and deterministic mock adapter.
+- `@studio/ai-adapters`: Self-hosted AWS Ollama adapter, OpenAI/Anthropic fallback adapters, and deterministic mock adapter.
 - `apps/api`: REST endpoints for project creation, story generation, and script breakdown.
 - `apps/web`: Studio layout shell (header, sidebar, navigation, project state manager, concept prompt input, and script review panel).
 
@@ -174,7 +174,7 @@ Harden the entire application stack: API security, rate limiting, WebGL context 
 ### 7.3. Acceptance Criteria
 - [ ] API rejects malformed payloads and malicious inputs with HTTP 400 and structured error responses.
 - [ ] Simulated WebGL context loss does not crash the web app; canvas recovers smoothly.
-- [ ] Third-party API failures (OpenRouter/ai33.pro) trigger graceful fallbacks or actionable user prompts.
+- [ ] Third-party API failures (Ollama/ai33.pro) trigger graceful fallbacks or actionable user prompts.
 - [ ] No private keys or service tokens appear in browser bundles or client network traces.
 
 ### 7.4. Verification Tests
@@ -212,7 +212,7 @@ Final end-to-end system testing, performance optimization, production containeri
 Upon receiving explicit user approval to proceed with **Phase 1**, the following discrete implementation steps will be executed:
 1. **Dependency Installation & Workspace Setup:** Install necessary workspace dependencies (`turbo`, `zod`, `express`, `vite`, `three`, etc.) using `pnpm install` outside sandbox.
 2. **Types & Validation:** Implement complete Zod schemas and TypeScript interfaces in `@studio/types` for projects, stories, scenes, and dialogues.
-3. **AI Adapter Engine:** Build `@studio/ai-adapters` with OpenRouter client, structured prompt templates, JSON schema parsers, and the deterministic mock adapter.
+3. **AI Adapter Engine:** Build `@studio/ai-adapters` with self-hosted Ollama client, structured prompt templates, JSON schema parsers, and the deterministic mock adapter.
 4. **Backend API Endpoints:** Build `apps/api` story routes (`/api/stories/generate`, `/api/stories/:id/expand`, `/api/projects`).
 5. **Frontend Studio Shell:** Build `apps/web` layout, theme, story prompt UI, and scene review panel connected to the API.
 6. **Phase 1 Verification:** Execute unit and integration tests, verify end-to-end story generation, and request user sign-off.

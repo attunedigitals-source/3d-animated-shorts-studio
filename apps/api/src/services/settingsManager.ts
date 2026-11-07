@@ -63,10 +63,9 @@ class SettingsManager {
     if (this.settings.ai) {
       if (this.settings.ai.provider) process.env.AI_PROVIDER = this.settings.ai.provider;
       if (this.settings.ai.model) {
-        process.env.OPENROUTER_DEFAULT_MODEL = this.settings.ai.model;
+        process.env.OLLAMA_MODEL = this.settings.ai.model;
         process.env.OPENAI_DEFAULT_MODEL = this.settings.ai.model;
         process.env.ANTHROPIC_DEFAULT_MODEL = this.settings.ai.model;
-        process.env.OLLAMA_MODEL = this.settings.ai.model;
       }
       if (this.settings.ai.mockAi !== undefined) process.env.MOCK_AI = String(this.settings.ai.mockAi);
 
@@ -77,8 +76,6 @@ class SettingsManager {
           process.env.ANTHROPIC_API_KEY = this.settings.ai.apiKey;
         } else if (this.settings.ai.provider === 'ollama') {
           process.env.OLLAMA_API_KEY = this.settings.ai.apiKey;
-        } else {
-          process.env.OPENROUTER_API_KEY = this.settings.ai.apiKey;
         }
       }
       if (this.settings.ai.baseUrl) {
@@ -86,8 +83,6 @@ class SettingsManager {
           process.env.OPENAI_BASE_URL = this.settings.ai.baseUrl;
         } else if (this.settings.ai.provider === 'ollama') {
           process.env.OLLAMA_BASE_URL = this.settings.ai.baseUrl;
-        } else {
-          process.env.OPENROUTER_BASE_URL = this.settings.ai.baseUrl;
         }
       }
     }

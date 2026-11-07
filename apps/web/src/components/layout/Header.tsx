@@ -156,10 +156,10 @@ export const Header: React.FC = () => {
         {/* AI Provider Status Pill */}
         <div
           className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border bg-slate-900/60 border-slate-800 text-slate-400"
-          title={`Active AI Provider: ${aiSettings.provider || 'openrouter'}`}
+          title={`Active AI Provider: ${aiSettings.provider || 'ollama'}`}
         >
           <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
-          <span className="capitalize">{aiSettings.mockAi ? 'Mock AI' : aiSettings.provider || 'OpenRouter'}</span>
+          <span className="capitalize">{aiSettings.mockAi ? 'Mock AI' : aiSettings.provider || 'Ollama'}</span>
         </div>
 
         {/* User Account Menu */}
