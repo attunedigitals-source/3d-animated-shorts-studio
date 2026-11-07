@@ -37,11 +37,10 @@ export interface TestVoiceResponse {
 
 export interface StudioSettingsPayload {
   ai?: {
-    provider?: 'ollama' | 'openai' | 'anthropic' | 'mock';
+    provider?: 'ollama';
     model?: string;
     apiKey?: string;
     baseUrl?: string;
-    mockAi?: boolean;
   };
   voice?: {
     provider?: 'ai33' | 'mock';

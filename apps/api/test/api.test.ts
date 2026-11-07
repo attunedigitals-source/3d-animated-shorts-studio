@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import request from 'supertest';
 import app from '../src/index';
 
@@ -77,16 +77,30 @@ describe('API Integration Test Suite', () => {
       expect(res.body.data.ai.apiKey).toBeUndefined();
     });
 
-    it('should test connection for mock provider', async () => {
-      const res = await request(app)
-        .post('/api/settings/test-connection')
-        .set(aliceHeaders)
-        .send({ provider: 'mock' });
+    it('should test connection for ollama provider', async () => {
+      const originalFetch = globalThis.fetch;
+      try {
+        globalThis.fetch = (async () => ({
+          ok: true,
+          status: 200,
+          json: async () => ({
+            model: 'llama3.2:3b',
+            message: { role: 'assistant', content: '{"status": "ok"}' },
+          }),
+        })) as any;
 
-      expect(res.status).toBe(200);
-      expect(res.body.success).toBe(true);
-      expect(res.body.data.connected).toBe(true);
-      expect(res.body.data.provider).toBe('mock');
+        const res = await request(app)
+          .post('/api/settings/test-connection')
+          .set(aliceHeaders)
+          .send({ provider: 'ollama', model: 'llama3.2:3b' });
+
+        expect(res.status).toBe(200);
+        expect(res.body.success).toBe(true);
+        expect(res.body.data.connected).toBe(true);
+        expect(res.body.data.provider).toBe('ollama');
+      } finally {
+        globalThis.fetch = originalFetch;
+      }
     });
 
     it('should update runtime settings and credentials via POST /api/settings', async () => {
@@ -95,8 +109,8 @@ describe('API Integration Test Suite', () => {
         .set(aliceHeaders)
         .send({
           ai: {
-            provider: 'mock',
-            model: 'deterministic-mock-v1',
+            provider: 'ollama',
+            model: 'llama3.2:3b',
           },
           voice: {
             provider: 'mock',
@@ -109,7 +123,7 @@ describe('API Integration Test Suite', () => {
 
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
-      expect(res.body.data.ai.provider).toBe('mock');
+      expect(res.body.data.ai.provider).toBe('ollama');
       expect(res.body.data.voice.provider).toBe('mock');
       expect(res.body.data.database.mode).toBe('dev');
     });
@@ -231,8 +245,117 @@ describe('API Integration Test Suite', () => {
 
   describe('Full AI Story, Script & Scene Breakdown Pipeline', () => {
     let testProjectId: string;
+    let originalFetch: typeof globalThis.fetch;
 
     beforeAll(async () => {
+      originalFetch = globalThis.fetch;
+      globalThis.fetch = (async (url: any, opts: any) => {
+        const body = JSON.parse(opts?.body || '{}');
+        const promptText = JSON.stringify(body.messages || []);
+
+        let contentJson: any;
+        if (promptText.includes('animation director') || promptText.includes('Concept / Idea') || promptText.includes('original 3D animated cartoon short story')) {
+          contentJson = {
+            title: 'The Clockwork Squirrel',
+            logline: 'A metallic squirrel hoards glowing acorns across a cyberpunk city.',
+            premise: 'A mechanical squirrel survives in a neon metropolis.',
+            beginning: 'Rusty the squirrel hops along copper telephone wires.',
+            mainConflict: 'A street sweeper bot threatens to clean up the power acorns.',
+            turningPoints: ['Rusty outsmarts the sweeper bot with a magnet.'],
+            climax: 'Rusty connects the glowing acorns into the central generator.',
+            ending: 'The city square lights up in vibrant neon.',
+            characterDescriptions: [
+              {
+                name: 'Rusty',
+                role: 'Protagonist',
+                personality: 'Resourceful and quick-witted',
+                appearance: 'Brushed copper squirrel with optic sensor eyes',
+                visualDistinctives: 'Cogwheel tail',
+              },
+            ],
+            emotionalProgression: 'Curious -> Anxious -> Victorious',
+          };
+        } else if (promptText.includes('scriptwriter') || promptText.includes('approved story into a narration-ready')) {
+          contentJson = {
+            title: 'The Clockwork Squirrel',
+            targetDurationSeconds: 30,
+            totalEstimatedDurationSeconds: 30,
+            totalWordCount: 10,
+            scenes: [
+              {
+                sceneNumber: 1,
+                sceneHeading: 'EXT. CYBERPUNK ALLEY - NIGHT',
+                narration: 'Neon rain drenched the copper wires.',
+                dialogue: [{ characterName: 'Rusty', line: '*chirp click*', deliveryInstruction: 'clicking' }],
+                actionDescriptions: 'Rusty scurries down the damp cable holding a glowing blue acorn.',
+                emotionalDirection: 'Tense anticipation',
+                approximateDurationSeconds: 15,
+                estimatedWordCount: 5,
+              },
+              {
+                sceneNumber: 2,
+                sceneHeading: 'EXT. POWER GENERATOR - NIGHT',
+                narration: 'The spark caught instantly.',
+                dialogue: [{ characterName: 'Rusty', line: '*whirrr!*', deliveryInstruction: 'celebratory' }],
+                actionDescriptions: 'Rusty slots the acorn into the glowing generator terminal.',
+                emotionalDirection: 'Triumphant energy',
+                approximateDurationSeconds: 15,
+                estimatedWordCount: 5,
+              },
+            ],
+          };
+        } else {
+          contentJson = [
+            {
+              id: 'scene-1',
+              sceneNumber: 1,
+              sceneTitle: 'Alley Wire Scramble',
+              sceneDescription: 'Rusty navigates rainy neon cables.',
+              charactersInvolved: ['Rusty'],
+              characterActions: 'Rusty scampers swiftly across electric cables',
+              dialogue: [{ characterName: 'Rusty', line: '*chirp click*' }],
+              narration: 'Neon rain drenched the copper wires.',
+              environmentDescription: 'Damp cyberpunk alley glowing with pink and blue neon signs',
+              propsRequired: ['Glowing blue acorn', 'Overhead cables'],
+              emotionalTone: 'Tense and mysterious',
+              cameraDirectionSuggestions: 'Low-angle tracking shot following wire descent',
+              approximateDurationSeconds: 15,
+              continuityNotes: 'Holding glowing acorn',
+            },
+            {
+              id: 'scene-2',
+              sceneNumber: 2,
+              sceneTitle: 'Power Grid Activation',
+              sceneDescription: 'Rusty plugs the acorn into the power terminal.',
+              charactersInvolved: ['Rusty'],
+              characterActions: 'Rusty inserts the glowing acorn into the slot',
+              dialogue: [{ characterName: 'Rusty', line: '*whirrr!*' }],
+              narration: 'The spark caught instantly.',
+              environmentDescription: 'Humming electrical substation on a rooftop terrace',
+              propsRequired: ['Central generator core', 'Sparks particle emitter'],
+              emotionalTone: 'Triumphant and electrifying',
+              cameraDirectionSuggestions: 'Orbiting camera rotating around generator',
+              approximateDurationSeconds: 15,
+              continuityNotes: 'City lights illuminate behind',
+            },
+          ];
+        }
+
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            model: 'llama3.2:3b',
+            message: {
+              role: 'assistant',
+              content: JSON.stringify(contentJson),
+            },
+            prompt_eval_count: 50,
+            eval_count: 150,
+          }),
+        } as any;
+      }) as any;
+
       const res = await request(app)
         .post('/api/projects')
         .set(aliceHeaders)
@@ -242,6 +365,10 @@ describe('API Integration Test Suite', () => {
           targetDurationSeconds: 30,
         });
       testProjectId = res.body.data.id;
+    });
+
+    afterAll(async () => {
+      globalThis.fetch = originalFetch;
     });
 
     it('should generate an AI story for the project and persist it', async () => {
@@ -259,7 +386,6 @@ describe('API Integration Test Suite', () => {
             visualStyle: 'Stylized 3D Cartoon',
             language: 'English',
           },
-          settings: { mockAi: true },
         });
 
       expect(res.status).toBe(200);
@@ -286,7 +412,6 @@ describe('API Integration Test Suite', () => {
         .send({
           projectId: testProjectId,
           targetDurationSeconds: 30,
-          settings: { mockAi: true },
         });
 
       expect(res.status).toBe(200);
@@ -310,7 +435,6 @@ describe('API Integration Test Suite', () => {
         .set(aliceHeaders)
         .send({
           projectId: testProjectId,
-          settings: { mockAi: true },
         });
 
       expect(res.status).toBe(200);

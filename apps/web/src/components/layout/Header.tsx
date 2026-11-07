@@ -153,13 +153,13 @@ export const Header: React.FC = () => {
           <span>{isSupabaseConfigured ? 'Supabase' : 'Dev DB'}</span>
         </div>
 
-        {/* AI Provider Status Pill */}
+        {/* AI Engine Status Pill (Ollama Exclusive) */}
         <div
-          className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border bg-slate-900/60 border-slate-800 text-slate-400"
-          title={`Active AI Provider: ${aiSettings.provider || 'ollama'}`}
+          className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border bg-slate-900/60 border-slate-800 text-slate-300"
+          title={`Active AI Engine: Self-Hosted Ollama on AWS EC2 (${aiSettings.model || 'llama3.2:3b'})`}
         >
           <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
-          <span className="capitalize">{aiSettings.mockAi ? 'Mock AI' : aiSettings.provider || 'Ollama'}</span>
+          <span>Ollama ({aiSettings.model || 'llama3.2:3b'})</span>
         </div>
 
         {/* User Account Menu */}

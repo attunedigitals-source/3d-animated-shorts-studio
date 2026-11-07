@@ -7,7 +7,7 @@ An AI-powered 3D animated video production studio that enables creators to gener
 ## Architecture Highlights
 - **Real 3D Animation:** Three.js and React Three Fiber power actual 3D character rigs, environments, lighting, and camera paths.
 - **Dedicated Rendering Worker:** Heavy video composition, offscreen WebGL rendering, and FFmpeg encoding run exclusively on background workers using BullMQ and Redis.
-- **Provider-Agnostic AI & Voice:** Pluggable adapters supporting self-hosted AWS Ollama (primary), OpenAI, Anthropic, ai33.pro Unified v3 Voice API (ElevenLabs, Minimax, Clone, Edge, Kokoro, Vbee, FishAudio), and deterministic offline mock engines.
+- **AI & Voice Architecture:** Self-hosted AWS Ollama LLM (`llama3.2:3b` at `http://127.0.0.1:11434`) exclusively for story, script, and scene generation, paired with ai33.pro Unified v3 Voice API (ElevenLabs, Minimax, Clone, Edge, Kokoro, Vbee, FishAudio) and local mock voice for speech synthesis.
 - **Persistent Asset & Project Management:** Supabase database and flexible storage adapters (local filesystem, Supabase Storage, S3).
 - **Safe Secrets Architecture:** Zero private provider API keys or service tokens are exposed to client-side bundles.
 

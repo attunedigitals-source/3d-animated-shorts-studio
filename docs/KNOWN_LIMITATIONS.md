@@ -11,7 +11,7 @@
 | **Video Processing** | FFmpeg & FFprobe | FFmpeg 6.x+ | H.264/AAC muxing, audio filter graphs, MP4 packaging |
 | **Queue & Cache** | Redis & BullMQ | Redis 7.x, BullMQ 5.x | Distributed asynchronous rendering job queue |
 | **Database & Auth** | Supabase (PostgreSQL) | Supabase JS 2.x | Relational persistence, JSONB scene specs, asset storage |
-| **AI Language** | Self-Hosted Ollama on AWS EC2 (or OpenAI/Anthropic) | REST API | Self-hosted llama3.2:3b script generation and scene breakdown |
+| **AI Language** | Self-Hosted Ollama on AWS EC2 | REST API | Self-hosted llama3.2:3b script generation and scene breakdown |
 | **AI Voice** | ai33.pro (Unified v3) | REST API | Character voice synthesis (ElevenLabs, Minimax, Clone, Edge, Kokoro, Vbee, FishAudio) & multi-speaker dialogue |
 
 ---
@@ -48,7 +48,7 @@
   1. Enforce JSON schema validation via Zod (`StoryDocumentSchema`).
   2. Implement robust JSON extractor utility that strips markdown fences (````json ... ````) and conversational preamble.
   3. Provide automatic prompt retry (up to 2 retries) with structured repair prompts upon validation failure.
-  4. Provide the fully deterministic `mock` adapter for guaranteed local reliability during development.
+  4. Enforce clear diagnostics and recovery instructions when the self-hosted AWS Ollama endpoint is unreachable.
 
 ### 2.5. Audio Lip-Sync & Multi-Speaker Dialogue Pacing
 - **Challenge:** Full bone-driven speech lip-sync requires accurate volume envelopes and timing. Multi-speaker dialogue requires consistent gaps between character turns.

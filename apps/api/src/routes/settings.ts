@@ -6,7 +6,7 @@ import { settingsManager } from '../services/settingsManager';
 
 const router = Router();
 
-// Available curated models list
+// Available curated models list (Ollama exclusive)
 const AVAILABLE_MODELS: AIModelOption[] = [
   {
     id: 'llama3.2:3b',
@@ -15,52 +15,20 @@ const AVAILABLE_MODELS: AIModelOption[] = [
     contextWindow: 128000,
     recommendedFor: ['story', 'script', 'scenes'],
   },
-  {
-    id: 'gpt-4o',
-    name: 'GPT-4o (Direct OpenAI)',
-    provider: 'openai',
-    contextWindow: 128000,
-    recommendedFor: ['story', 'script', 'scenes'],
-  },
-  {
-    id: 'gpt-4o-mini',
-    name: 'GPT-4o Mini (Direct OpenAI)',
-    provider: 'openai',
-    contextWindow: 128000,
-    recommendedFor: ['story', 'script', 'scenes'],
-  },
-  {
-    id: 'claude-3-5-sonnet-20241022',
-    name: 'Claude 3.5 Sonnet (Direct Anthropic)',
-    provider: 'anthropic',
-    contextWindow: 200000,
-    recommendedFor: ['story', 'script', 'scenes'],
-  },
-  {
-    id: 'deterministic-mock-v1',
-    name: 'Offline Mock AI Engine (Deterministic)',
-    provider: 'mock',
-    contextWindow: 32000,
-    recommendedFor: ['story', 'script', 'scenes'],
-  },
 ];
 
 function buildSafeSettingsResponse() {
-  const currentProvider = process.env.MOCK_AI === 'true' ? 'mock' : process.env.AI_PROVIDER || 'ollama';
   const defaultModel = process.env.OLLAMA_MODEL || 'llama3.2:3b';
   const voiceProvider = process.env.VOICE_PROVIDER || 'ai33';
   const isDevDatabase = !isSupabaseConfigured();
 
   return {
     ai: {
-      provider: currentProvider,
+      provider: 'ollama' as const,
       model: defaultModel,
-      mockAi: process.env.MOCK_AI === 'true',
-      hasOpenAIKey: Boolean(process.env.OPENAI_API_KEY && !process.env.OPENAI_API_KEY.includes('placeholder')),
-      hasAnthropicKey: Boolean(process.env.ANTHROPIC_API_KEY && !process.env.ANTHROPIC_API_KEY.includes('placeholder')),
-      hasOllama: Boolean(process.env.OLLAMA_BASE_URL || currentProvider === 'ollama'),
+      hasOllama: true,
       // Private internal Ollama endpoints remain strictly server-side
-      baseUrl: currentProvider === 'ollama' ? undefined : process.env.OPENAI_BASE_URL,
+      baseUrl: undefined,
     },
     voice: {
       provider: voiceProvider,

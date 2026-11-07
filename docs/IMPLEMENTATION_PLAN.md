@@ -15,7 +15,7 @@ Establish the operational monorepo infrastructure, database migrations, base typ
 - Fully configured monorepo workspace (`pnpm`, `turbo`, strict TypeScript configuration).
 - Initialized Supabase schema (`projects`, `stories`, `scenes`, `characters`).
 - `@studio/types`: Core data models and Zod validation schemas for stories and scripts.
-- `@studio/ai-adapters`: Self-hosted AWS Ollama adapter, OpenAI/Anthropic fallback adapters, and deterministic mock adapter.
+- `@studio/ai-adapters`: Self-hosted AWS Ollama adapter (`llama3.2:3b` at `http://127.0.0.1:11434`) exclusively for LLM generation.
 - `apps/api`: REST endpoints for project creation, story generation, and script breakdown.
 - `apps/web`: Studio layout shell (header, sidebar, navigation, project state manager, concept prompt input, and script review panel).
 
@@ -23,7 +23,7 @@ Establish the operational monorepo infrastructure, database migrations, base typ
 - [x] Monorepo builds cleanly (`turbo run build`) and passes typecheck (`turbo run typecheck`).
 - [x] Database schema is deployed or reproducible via local Supabase migrations (`migrations/001_phase1_schema.sql` with RLS + persistent dev fallback).
 - [x] AI adapter generates structured stories conforming strictly to `StoryDocument` format with hook, rising action, climax, and resolution.
-- [x] Mock AI mode operates offline deterministically without requiring external API keys.
+- [x] Ollama AI adapter operates reliably with structured JSON schema validation and zero external proprietary LLM dependencies.
 - [x] Frontend user can input a prompt, view the AI-generated script broken into scenes, edit lines, and save the project to the database.
 
 ### 1.4. Verification Tests
@@ -155,7 +155,7 @@ Provide two cohesive user journeys:
 - [ ] Saved projects can be reloaded at any time with all 3D assets, script lines, and settings restored.
 
 ### 6.4. Verification Tests
-- E2E flow test: Execute complete One-Click pipeline from prompt to queued job using mock adapters.
+- E2E flow test: Execute complete One-Click pipeline from prompt to queued job.
 - Wizard state test: Navigate forward and backward through the Guided Wizard ensuring state is never lost.
 
 ---
@@ -212,7 +212,7 @@ Final end-to-end system testing, performance optimization, production containeri
 Upon receiving explicit user approval to proceed with **Phase 1**, the following discrete implementation steps will be executed:
 1. **Dependency Installation & Workspace Setup:** Install necessary workspace dependencies (`turbo`, `zod`, `express`, `vite`, `three`, etc.) using `pnpm install` outside sandbox.
 2. **Types & Validation:** Implement complete Zod schemas and TypeScript interfaces in `@studio/types` for projects, stories, scenes, and dialogues.
-3. **AI Adapter Engine:** Build `@studio/ai-adapters` with self-hosted Ollama client, structured prompt templates, JSON schema parsers, and the deterministic mock adapter.
+3. **AI Adapter Engine:** Build `@studio/ai-adapters` with self-hosted Ollama client, structured prompt templates, and JSON schema parsers.
 4. **Backend API Endpoints:** Build `apps/api` story routes (`/api/stories/generate`, `/api/stories/:id/expand`, `/api/projects`).
 5. **Frontend Studio Shell:** Build `apps/web` layout, theme, story prompt UI, and scene review panel connected to the API.
 6. **Phase 1 Verification:** Execute unit and integration tests, verify end-to-end story generation, and request user sign-off.

@@ -8,7 +8,7 @@ The system is designed with strict enterprise-grade boundaries:
 - **No Client-Side Video Rendering:** All intensive frame composition, 3D rasterization, and FFmpeg encoding happen in dedicated background worker processes.
 - **Genuine 3D Animation:** Scenes use actual Three.js meshes, bones, rigs, blend shapes, and keyframed camera paths, avoiding static 2D slideshows or image cross-fading.
 - **Zero Fabricated Functionality:** Every progress bar, state change, and status report reflects real backend and worker events.
-- **Provider Agnosticism:** AI reasoning and voice synthesis use pluggable adapters (self-hosted AWS Ollama, ai33.pro Unified v3, OpenAI, Anthropic, or deterministic offline mock adapters).
+- **AI & Voice Architecture:** AI reasoning uses a dedicated self-hosted Ollama adapter (`llama3.2:3b` on AWS EC2); voice synthesis uses pluggable adapters (ai33.pro Unified v3 or local mock voice adapter).
 - **Strict Secrets Isolation:** Private provider keys and database service roles are confined to the backend and worker processes; the client bundle receives zero secrets.
 
 ---
@@ -43,10 +43,10 @@ flowchart TD
         AIAdapters["@studio/ai-adapters"]
         OllamaLLM["Self-Hosted Ollama (AWS EC2 / llama3.2:3b)"]
         AI33Voice["ai33.pro Voice API (ElevenLabs / Minimax / Edge / Kokoro)"]
-        MockEngines["Offline Mock Engines"]
+        MockVoice["Local Mock Voice Engine"]
         AIAdapters --> OllamaLLM
         AIAdapters --> AI33Voice
-        AIAdapters --> MockEngines
+        AIAdapters --> MockVoice
     end
 
     subgraph DataQueueLayer ["4. State, Queue & Storage"]
@@ -126,12 +126,10 @@ The system is decomposed into nine specialized domains:
   - `render_jobs`: Job status, frame percentage, output video URL, error traces.
 
 ### 3.5. AI Reasoning & Story Engine (`packages/ai-adapters`)
-- **Technology:** Provider-independent LLM client layer with Zod schema extraction.
-- **Supported Providers:**
-  - **Self-Hosted Ollama Adapter (Primary):** Connects to the local/private Ollama daemon on AWS EC2 running `llama3.2:3b`.
-  - **OpenAI & Anthropic Fallbacks:** Direct API connectors for optional cloud fallback.
-  - **Deterministic Mock Engine:** Generates complete, high-quality script documents offline without external network calls or costs.
-- **Reliability:** Automated markdown fence stripping, JSON schema repair, and retry policies.
+- **Technology:** Self-hosted Ollama LLM adapter running on AWS EC2 with Zod schema extraction.
+- **Provider Architecture:**
+  - **Self-Hosted Ollama Adapter (Exclusive LLM):** Connects to the local/private Ollama daemon on AWS EC2 at `http://127.0.0.1:11434` running `llama3.2:3b`. All generation requests route server-side through the backend Express API. Direct browser connections to Ollama are strictly prohibited.
+- **Reliability:** Automated markdown fence stripping, JSON schema repair, and explicit error reporting if AWS EC2 Ollama is unreachable.
 
 ### 3.6. 3D Engine & Character Rigging (`packages/3d-engine`)
 - **Technology:** Three.js 0.169.
@@ -245,4 +243,4 @@ sequenceDiagram
 - **BullMQ Auto-Retry:** Network blips during third-party AI or voice generation trigger exponential backoff retries (up to 3 attempts).
 - **Graceful Worker Shutdown:** Workers handle `SIGTERM` and `SIGINT` signals by finishing current frame renders or marking the job as failed with an explanatory error trace rather than leaving zombie jobs.
 - **Render Crash Isolation:** If a headless Chrome instance or FFmpeg process crashes, the worker catches the exit code, cleans up temporary frame directories (`renders/temp`), and updates the database record with a recoverable error status.
-- **Offline/Mock Fallback Mode:** Setting `MOCK_AI=true` and `MOCK_VOICE=true` allows full end-to-end testing, local development, and CI pipelines to execute without incurring API costs or failing when keys are absent.
+- **Mock Voice Fallback:** Setting `MOCK_VOICE=true` allows full voice testing and local development without calling external voice APIs.

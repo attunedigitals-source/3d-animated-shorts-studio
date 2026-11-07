@@ -112,7 +112,7 @@ export class OllamaAIAdapter implements IAIProviderAdapter {
       }
       if (err.code === 'ECONNREFUSED' || err.message?.includes('fetch failed')) {
         throw new Error(
-          `Could not connect to Ollama server at ${config.baseUrl}. Please ensure Ollama is running and accessible: ${err.message}`,
+          `Could not connect to Ollama server at ${config.baseUrl}. Please ensure the AWS Ollama service is running and accessible: ${err.message}`,
         );
       }
       throw err;

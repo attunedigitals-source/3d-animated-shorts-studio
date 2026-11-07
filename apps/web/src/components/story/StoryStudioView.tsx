@@ -271,34 +271,26 @@ export const StoryStudioView: React.FC = () => {
                   <Cpu className="w-3.5 h-3.5 text-indigo-400" />
                   AI Model
                 </span>
-                <span className="text-[10px] text-indigo-400 font-mono bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20 capitalize">
-                  {aiSettings.provider || 'ollama'}
+                <span className="text-[10px] text-emerald-400 font-mono bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                  Ollama (AWS EC2)
                 </span>
               </label>
               <select
                 value={aiSettings.model}
                 onChange={(e) => {
-                  const val = e.target.value;
-                  const matched = availableModels.find((m) => m.id === val);
-                  if (matched && matched.provider) {
-                    setAiSettings({ model: val, provider: matched.provider });
-                  } else {
-                    setAiSettings({ model: val });
-                  }
+                  setAiSettings({ model: e.target.value, provider: 'ollama' });
                 }}
                 className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
               >
                 {availableModels
-                  .filter((m) => !aiSettings.provider || m.provider === aiSettings.provider)
+                  .filter((m) => m.provider === 'ollama')
                   .map((m) => (
                     <option key={m.id} value={m.id}>
                       {m.name}
                     </option>
                   ))}
                 {aiSettings.model &&
-                  !availableModels.some(
-                    (m) => m.id === aiSettings.model && (!aiSettings.provider || m.provider === aiSettings.provider)
-                  ) && (
+                  !availableModels.some((m) => m.id === aiSettings.model && m.provider === 'ollama') && (
                     <option value={aiSettings.model}>
                       {aiSettings.model} (Custom)
                     </option>

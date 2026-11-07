@@ -3,9 +3,9 @@
 ## 1. Testing Philosophy & Standards
 
 To ensure production-grade reliability across complex real-time 3D, AI orchestration, audio synthesis, and headless video rendering, **3D Animated Shorts Studio** enforces a multi-tiered testing strategy:
-1. **Zero Mocked Deliverables:** While external paid APIs (LLMs, TTS) support deterministic mock adapters for fast, cost-free testing, the actual 3D rendering, canvas composition, and video multiplexing pipelines must execute real computations and produce real output files.
+1. **Zero Mocked Deliverables:** While external speech APIs support mock adapters for offline audio testing, the actual 3D rendering, canvas composition, and video multiplexing pipelines must execute real computations and produce real output files.
 2. **Type Safety as First-Line Verification:** Every package must pass strict TypeScript type checking (`tsc --noEmit`) with zero implicit anys and no unchecked indexed accesses.
-3. **Deterministic CI/CD Execution:** Tests must run without network access or paid API keys by leveraging the built-in mock adapters (`MOCK_AI=true`, `MOCK_VOICE=true`, `STORAGE_PROVIDER=local`).
+3. **Deterministic CI/CD Execution:** Tests must run without network access or external credentials by leveraging test harness mocks (`MOCK_VOICE=true`, `STORAGE_PROVIDER=local`).
 
 ---
 
@@ -41,7 +41,7 @@ flowchart TD
 - **Framework:** Vitest + Supertest.
 - **Key Scenarios:**
   - **API Project Endpoints:** Create, read, update, and delete operations on projects, stories, and scenes.
-  - **Story Generation Route:** Submitting a concept prompt yields a 200 response with structured scenes within 500ms when using the mock adapter.
+  - **Story Generation Route:** Submitting a concept prompt yields a 200 response with structured scenes conforming strictly to schema.
   - **Storage Adapter:** Verify local disk upload, read, and delete operations; verify signed URL generation.
   - **Queue Enqueue & Dequeue:** Test that `apps/api` successfully adds a job to BullMQ and `apps/worker` receives the job payload.
 

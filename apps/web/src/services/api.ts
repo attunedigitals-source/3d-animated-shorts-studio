@@ -573,12 +573,9 @@ class ApiService {
 
       return {
         ai: {
-          provider: ai.provider || 'ollama',
+          provider: 'ollama' as const,
           model: ai.model || 'llama3.2:3b',
-          mockAi: ai.mockAi ?? false,
-          hasOpenAIKey: Boolean(ai.apiKey && ai.provider === 'openai'),
-          hasAnthropicKey: Boolean(ai.apiKey && ai.provider === 'anthropic'),
-          apiKey: ai.apiKey,
+          hasOllama: true,
         },
         voice: {
           provider: voice.provider || 'ai33',
@@ -597,10 +594,6 @@ class ApiService {
         },
         availableModels: [
           { id: 'llama3.2:3b', name: 'Llama 3.2 3B (Self-Hosted Ollama · AWS EC2)', provider: 'ollama', tier: 'fast', description: 'Self-hosted Ollama instance running llama3.2:3b on AWS EC2' },
-          { id: 'gpt-4o', name: 'GPT-4o (Direct)', provider: 'openai', tier: 'flagship', description: 'Direct OpenAI GPT-4o' },
-          { id: 'gpt-4o-mini', name: 'GPT-4o Mini (Direct)', provider: 'openai', tier: 'fast', description: 'Fast, cost-efficient direct OpenAI model' },
-          { id: 'claude-3-5-sonnet-20241022', name: 'Claude 3.5 Sonnet (Direct)', provider: 'anthropic', tier: 'flagship', description: 'Direct Anthropic Claude integration' },
-          { id: 'mock-story-v1', name: 'Mock Engine V1', provider: 'mock', tier: 'mock', description: 'Instant offline deterministic responses' },
         ],
       };
     }
@@ -638,157 +631,30 @@ class ApiService {
     }
   }
 
-  // AI Connection Test
-  async testConnection(settings: Partial<AISettings>): Promise<TestConnectionResponse> {
-    // For Ollama, connection tests must strictly route through the backend Express API
-    if (settings.provider === 'ollama') {
-      try {
-        const res = await this.request<TestConnectionResponse>('/settings/test-connection', {
-          method: 'POST',
-          body: JSON.stringify(settings),
-        });
-        if (res) return res;
-      } catch (err: any) {
-        return {
-          connected: false,
-          provider: 'ollama',
-          model: settings.model || 'llama3.2:3b',
-          latencyMs: 0,
-          message: `Backend API error testing Ollama connection: ${err.message || 'Studio Express API is unreachable.'}`,
-        };
-      }
-    }
-
+  // AI Connection Test (Strictly routes to backend Express API -> AWS EC2 Ollama)
+  async testConnection(settings?: Partial<AISettings>): Promise<TestConnectionResponse> {
     try {
       const res = await this.request<TestConnectionResponse>('/settings/test-connection', {
         method: 'POST',
-        body: JSON.stringify(settings),
+        body: JSON.stringify(settings || { provider: 'ollama', model: 'llama3.2:3b' }),
       });
       if (res) return res;
-    } catch {}
-
-    return this.testAIDirect(settings);
-  }
-
-  async testAIDirect(settings: Partial<AISettings>): Promise<TestConnectionResponse> {
-    const provider = settings.provider || 'ollama';
-    const model = settings.model || 'llama3.2:3b';
-    const apiKey = settings.apiKey?.trim();
-
-    if (provider === 'mock') {
-      return {
-        connected: true,
-        provider: 'mock',
-        model: 'mock-story-v1',
-        latencyMs: 5,
-        message: 'Deterministic offline Mock AI Engine is active and verified.',
-      };
-    }
-
-    if (!apiKey || apiKey.includes('placeholder')) {
+    } catch (err: any) {
       return {
         connected: false,
-        provider,
-        model,
+        provider: 'ollama',
+        model: settings?.model || 'llama3.2:3b',
         latencyMs: 0,
-        message: `API Key for ${provider} is missing or placeholder.`,
+        message: `Backend API error connecting to AWS Ollama: ${err.message || 'Studio Express API or AWS Ollama service is unreachable.'}`,
       };
-    }
-
-    const start = Date.now();
-
-    if (provider === 'openai') {
-      try {
-        const baseUrl = settings.baseUrl || 'https://api.openai.com/v1';
-        const res = await fetch(`${baseUrl}/models`, {
-          headers: {
-            Authorization: `Bearer ${apiKey}`,
-          },
-        });
-        const latency = Date.now() - start;
-        const data = await res.json().catch(() => ({}));
-
-        if (res.ok && data?.data) {
-          return {
-            connected: true,
-            provider: 'openai',
-            model,
-            latencyMs: latency,
-            message: 'Connected to OpenAI endpoint successfully and verified models access.',
-          };
-        } else {
-          return {
-            connected: false,
-            provider: 'openai',
-            model,
-            latencyMs: latency,
-            message: data?.error?.message || `OpenAI returned status ${res.status}`,
-          };
-        }
-      } catch (err: any) {
-        return {
-          connected: false,
-          provider: 'openai',
-          model,
-          latencyMs: Date.now() - start,
-          message: `Network error connecting to OpenAI: ${err.message}`,
-        };
-      }
-    }
-
-    if (provider === 'anthropic') {
-      try {
-        const res = await fetch('https://api.anthropic.com/v1/messages', {
-          method: 'POST',
-          headers: {
-            'x-api-key': apiKey,
-            'anthropic-version': '2023-06-01',
-            'content-type': 'application/json',
-            'anthropic-dangerous-direct-browser-access': 'true',
-          },
-          body: JSON.stringify({
-            model: 'claude-3-haiku-20240307',
-            max_tokens: 1,
-            messages: [{ role: 'user', content: 'ping' }],
-          }),
-        });
-        const latency = Date.now() - start;
-        const data = await res.json().catch(() => ({}));
-
-        if (res.ok) {
-          return {
-            connected: true,
-            provider: 'anthropic',
-            model,
-            latencyMs: latency,
-            message: 'Connected to Anthropic API successfully!',
-          };
-        } else {
-          return {
-            connected: false,
-            provider: 'anthropic',
-            model,
-            latencyMs: latency,
-            message: data?.error?.message || `Anthropic returned status ${res.status}`,
-          };
-        }
-      } catch (err: any) {
-        return {
-          connected: false,
-          provider: 'anthropic',
-          model,
-          latencyMs: Date.now() - start,
-          message: `Network error connecting to Anthropic: ${err.message}`,
-        };
-      }
     }
 
     return {
       connected: false,
-      provider,
-      model,
+      provider: 'ollama',
+      model: settings?.model || 'llama3.2:3b',
       latencyMs: 0,
-      message: `Unknown provider: ${provider}`,
+      message: 'Failed to test Ollama connection.',
     };
   }
 

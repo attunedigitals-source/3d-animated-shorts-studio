@@ -18,7 +18,6 @@ import {
 } from 'lucide-react';
 import { api } from '../../services/api';
 import {
-  AIProviderType,
   TestConnectionResponse,
   TestSupabaseResponse,
   TestVoiceResponse,
@@ -42,7 +41,6 @@ export const SettingsView: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'ai' | 'voice' | 'database'>('ai');
 
   // Key Visibility Toggles
-  const [showAiKey, setShowAiKey] = useState(false);
   const [showVoiceKey, setShowVoiceKey] = useState(false);
   const [showSupabaseAnonKey, setShowSupabaseAnonKey] = useState(false);
   const [showSupabaseServiceKey, setShowSupabaseServiceKey] = useState(false);
@@ -64,29 +62,6 @@ export const SettingsView: React.FC = () => {
 
   const [supabaseTestResult, setSupabaseTestResult] = useState<TestSupabaseResponse | null>(null);
   const [isTestingSupabase, setIsTestingSupabase] = useState(false);
-
-  const providers: { id: AIProviderType; name: string; desc: string }[] = [
-    {
-      id: 'ollama',
-      name: 'Ollama (Self-Hosted AWS EC2)',
-      desc: 'Primary private LLM running llama3.2:3b directly on AWS EC2 backend.',
-    },
-    {
-      id: 'openai',
-      name: 'OpenAI / Compatible',
-      desc: 'Connect directly to OpenAI or local models via vLLM, or LM Studio.',
-    },
-    {
-      id: 'anthropic',
-      name: 'Anthropic Direct',
-      desc: 'Direct Claude API integration using your Anthropic console key.',
-    },
-    {
-      id: 'mock',
-      name: 'Offline Mock AI Engine',
-      desc: 'Zero-cost deterministic generation for offline development and testing.',
-    },
-  ];
 
   const handleTestAi = async () => {
     setIsTestingAi(true);
@@ -218,149 +193,91 @@ export const SettingsView: React.FC = () => {
         </button>
       </div>
 
-      {/* TAB 1: AI Language Models */}
+      {/* TAB 1: AI Language Models (Ollama Exclusive) */}
       {activeTab === 'ai' && (
         <div className="p-6 rounded-2xl bg-slate-900/60 border border-slate-800 space-y-6">
           <div className="flex items-center justify-between pb-4 border-b border-slate-800">
             <h2 className="text-base font-bold text-white flex items-center gap-2">
               <Cpu className="w-4 h-4 text-indigo-400" />
-              AI Language & Reasoning Provider
+              AI Language & Reasoning Engine
             </h2>
-            <span className="text-[10px] font-semibold text-slate-400">Phase 1 Engine</span>
+            <span className="text-[10px] font-semibold text-emerald-400 bg-emerald-950/60 border border-emerald-800/60 px-2 py-0.5 rounded-full">
+              AWS EC2 Ollama Only
+            </span>
           </div>
 
-          {/* Provider Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {providers.map((p) => {
-              const isSelected = aiSettings.provider === p.id;
-              return (
-                <div
-                  key={p.id}
-                  onClick={() => {
-                    const defaultModels: Record<AIProviderType, string> = {
-                      ollama: 'llama3.2:3b',
-                      openai: 'gpt-4o',
-                      anthropic: 'claude-3-5-sonnet-20241022',
-                      mock: 'mock-story-v1',
-                    };
-                    setAiSettings({
-                      provider: p.id,
-                      model: defaultModels[p.id] || 'llama3.2:3b',
-                    });
-                  }}
-                  className={`p-4 rounded-xl border cursor-pointer transition flex flex-col justify-between space-y-2 ${isSelected
-                      ? 'bg-indigo-600/15 border-indigo-500/50 shadow-md shadow-indigo-600/10'
-                      : 'bg-slate-950/60 border-slate-800 hover:border-slate-700'
-                    }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-sm text-white">{p.name}</span>
-                    {isSelected && <CheckCircle2 className="w-4 h-4 text-indigo-400" />}
-                  </div>
-                  <p className="text-xs text-slate-400 leading-normal">{p.desc}</p>
-                </div>
-              );
-            })}
+          {/* Active Provider Card */}
+          <div className="p-4 rounded-xl border bg-indigo-600/15 border-indigo-500/50 shadow-md shadow-indigo-600/10 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="font-bold text-sm text-white flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-indigo-400" />
+                Ollama (Self-Hosted on AWS EC2)
+              </span>
+              <span className="text-[10px] font-mono text-indigo-300 bg-indigo-950/80 px-2 py-0.5 rounded border border-indigo-500/30">
+                127.0.0.1:11434
+              </span>
+            </div>
+            <p className="text-xs text-slate-300 leading-normal">
+              Primary private LLM running exclusively on our AWS EC2 Ubuntu server. All story generation, scriptwriting, and scene breakdowns route through the Studio Express API.
+            </p>
           </div>
 
           {/* Configuration Fields */}
           <div className="space-y-4 pt-2">
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-slate-300 flex items-center justify-between">
-                <span>Selected Model</span>
-                <span className="text-[10px] text-slate-500">Curated or custom model</span>
+                <span>Selected Ollama Model</span>
+                <span className="text-[10px] text-slate-500">Default: llama3.2:3b</span>
               </label>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <select
                   value={aiSettings.model}
-                  onChange={(e) => setAiSettings({ model: e.target.value })}
+                  onChange={(e) => setAiSettings({ model: e.target.value, provider: 'ollama' })}
                   className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
                 >
                   {availableModels
-                    .filter((m) => !aiSettings.provider || m.provider === aiSettings.provider)
+                    .filter((m) => m.provider === 'ollama')
                     .map((m) => (
                       <option key={m.id} value={m.id}>
                         {m.name}
                       </option>
                     ))}
+                  {aiSettings.model &&
+                    !availableModels.some((m) => m.id === aiSettings.model && m.provider === 'ollama') && (
+                      <option value={aiSettings.model}>
+                        {aiSettings.model} (Custom)
+                      </option>
+                    )}
                 </select>
 
                 <input
                   type="text"
-                  placeholder="Or enter custom model ID..."
+                  placeholder="Or enter custom Ollama model tag..."
                   value={aiSettings.model || ''}
-                  onChange={(e) => setAiSettings({ model: e.target.value })}
+                  onChange={(e) => setAiSettings({ model: e.target.value, provider: 'ollama' })}
                   className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 font-mono"
                 />
               </div>
             </div>
 
-            {aiSettings.provider === 'ollama' && (
-              <div className="p-3.5 rounded-xl bg-indigo-950/40 border border-indigo-500/20 text-xs space-y-1">
-                <span className="font-bold text-indigo-300 flex items-center gap-1.5">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-indigo-400" />
-                  Self-Hosted AWS EC2 Ollama Active
-                </span>
-                <p className="text-slate-400 text-[11px] leading-relaxed">
-                  Narrative reasoning uses your private <code className="text-indigo-200 font-mono">llama3.2:3b</code> model. All requests route securely through the Studio Express API backend, keeping internal endpoints and infrastructure private.
-                </p>
-              </div>
-            )}
-
-            {aiSettings.provider !== 'mock' && aiSettings.provider !== 'ollama' && (
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-300 flex items-center justify-between">
-                  <span className="flex items-center gap-1.5">
-                    <Key className="w-3.5 h-3.5 text-indigo-400" />
-                    API Key ({aiSettings.provider})
-                  </span>
-                  <span className="text-[10px] text-slate-500">
-                    Saved securely to studio runtime
-                  </span>
-                </label>
-                <div className="relative">
-                  <input
-                    type={showAiKey ? 'text' : 'password'}
-                    placeholder={`Enter your ${aiSettings.provider} API key...`}
-                    value={aiSettings.apiKey || ''}
-                    onChange={(e) => setAiSettings({ apiKey: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 pr-10 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 font-mono"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowAiKey(!showAiKey)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
-                  >
-                    {showAiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {aiSettings.provider === 'openai' && (
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
-                  <Globe className="w-3.5 h-3.5 text-indigo-400" />
-                  Custom Base URL (e.g. for LM Studio)
-                </label>
-                <input
-                  type="text"
-                  placeholder="http://localhost:11434/v1"
-                  value={aiSettings.baseUrl || ''}
-                  onChange={(e) => setAiSettings({ baseUrl: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 font-mono"
-                />
-              </div>
-            )}
+            <div className="p-3.5 rounded-xl bg-slate-950/80 border border-slate-800 text-xs space-y-1">
+              <span className="font-bold text-slate-200 flex items-center gap-1.5">
+                <HardDrive className="w-3.5 h-3.5 text-indigo-400" />
+                Network Architecture & Privacy Isolation
+              </span>
+              <p className="text-slate-400 text-[11px] leading-relaxed">
+                The Ollama daemon is strictly bound to localhost (<code className="text-indigo-300 font-mono">127.0.0.1:11434</code>) on AWS EC2. The browser never connects directly to port 11434. All prompts, scripts, and scene breakdowns are securely processed server-to-server.
+              </p>
+            </div>
 
             <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <button
                 onClick={handleTestAi}
                 disabled={isTestingAi}
-                className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold border border-slate-700 transition disabled:opacity-50"
+                className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-md transition disabled:opacity-50"
               >
-                <Activity className={`w-3.5 h-3.5 ${isTestingAi ? 'animate-spin text-indigo-400' : ''}`} />
-                {isTestingAi ? 'Pinging Provider...' : 'Test AI Connection'}
+                <Activity className={`w-3.5 h-3.5 ${isTestingAi ? 'animate-spin text-white' : ''}`} />
+                {isTestingAi ? 'Pinging AWS Ollama...' : 'Test AI Connection'}
               </button>
 
               {aiTestResult && (

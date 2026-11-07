@@ -9,7 +9,6 @@ interface StoredRuntimeSettings {
     model?: string;
     apiKey?: string;
     baseUrl?: string;
-    mockAi?: boolean;
   };
   voice?: {
     provider?: string;
@@ -61,29 +60,15 @@ class SettingsManager {
 
   private applyToEnvironment(): void {
     if (this.settings.ai) {
-      if (this.settings.ai.provider) process.env.AI_PROVIDER = this.settings.ai.provider;
+      process.env.AI_PROVIDER = 'ollama';
       if (this.settings.ai.model) {
         process.env.OLLAMA_MODEL = this.settings.ai.model;
-        process.env.OPENAI_DEFAULT_MODEL = this.settings.ai.model;
-        process.env.ANTHROPIC_DEFAULT_MODEL = this.settings.ai.model;
       }
-      if (this.settings.ai.mockAi !== undefined) process.env.MOCK_AI = String(this.settings.ai.mockAi);
-
       if (this.settings.ai.apiKey) {
-        if (this.settings.ai.provider === 'openai') {
-          process.env.OPENAI_API_KEY = this.settings.ai.apiKey;
-        } else if (this.settings.ai.provider === 'anthropic') {
-          process.env.ANTHROPIC_API_KEY = this.settings.ai.apiKey;
-        } else if (this.settings.ai.provider === 'ollama') {
-          process.env.OLLAMA_API_KEY = this.settings.ai.apiKey;
-        }
+        process.env.OLLAMA_API_KEY = this.settings.ai.apiKey;
       }
       if (this.settings.ai.baseUrl) {
-        if (this.settings.ai.provider === 'openai') {
-          process.env.OPENAI_BASE_URL = this.settings.ai.baseUrl;
-        } else if (this.settings.ai.provider === 'ollama') {
-          process.env.OLLAMA_BASE_URL = this.settings.ai.baseUrl;
-        }
+        process.env.OLLAMA_BASE_URL = this.settings.ai.baseUrl;
       }
     }
 

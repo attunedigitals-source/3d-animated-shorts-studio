@@ -2,7 +2,6 @@ import { describe, it, expect } from 'vitest';
 import { z } from 'zod';
 import {
   extractAndValidateJson,
-  MockAIAdapter,
   OllamaAIAdapter,
   getAIAdapter,
   MockVoiceAdapter,
@@ -41,88 +40,15 @@ describe('AI Adapters & JSON Parser', () => {
     });
   });
 
-  describe('MockAIAdapter', () => {
-    const adapter = new MockAIAdapter();
-
-    it('should return health check', async () => {
-      const check = await adapter.testConnection();
-      expect(check.connected).toBe(true);
-      expect(check.provider).toBe('mock');
-    });
-
-    it('should generate an original story conforming to StoryDocumentSchema', async () => {
-      const res = await adapter.generateStory({
-        topic: 'A space hamster stealing moon cheese',
-        targetDurationSeconds: 30,
-        category: 'Sci-Fi',
-        intendedAudience: 'General',
-        tone: 'Humorous',
-        visualStyle: 'Stylized 3D',
-        language: 'English',
-      });
-
-      expect(res.story.title).toBeTruthy();
-      expect(res.story.logline).toContain('moon cheese');
-      expect(res.story.characterDescriptions.length).toBeGreaterThan(0);
-      expect(res.metadata.status).toBe('success');
-    });
-
-    it('should generate a narration script matching target duration', async () => {
-      const storyRes = await adapter.generateStory({
-        topic: 'A space hamster',
-        targetDurationSeconds: 30,
-        category: 'Sci-Fi',
-        intendedAudience: 'General',
-        tone: 'Humorous',
-        visualStyle: 'Stylized 3D',
-        language: 'English',
-      });
-
-      const scriptRes = await adapter.generateScript(storyRes.story, 30);
-      expect(scriptRes.script.scenes.length).toBeGreaterThan(1);
-      expect(scriptRes.script.totalEstimatedDurationSeconds).toBe(30);
-      expect(scriptRes.script.scenes[0]!.dialogue).toBeDefined();
-    });
-
-    it('should break down script into structured 3D scenes', async () => {
-      const storyRes = await adapter.generateStory({
-        topic: 'A space hamster',
-        targetDurationSeconds: 30,
-        category: 'Sci-Fi',
-        intendedAudience: 'General',
-        tone: 'Humorous',
-        visualStyle: 'Stylized 3D',
-        language: 'English',
-      });
-      const scriptRes = await adapter.generateScript(storyRes.story, 30);
-      const scenesRes = await adapter.breakdownScenes(scriptRes.script, storyRes.story);
-
-      expect(scenesRes.scenes.length).toBe(scriptRes.script.scenes.length);
-      expect(scenesRes.scenes[0]!.environmentDescription).toBeTruthy();
-      expect(scenesRes.scenes[0]!.cameraDirectionSuggestions).toBeTruthy();
-      expect(scenesRes.scenes[0]!.propsRequired.length).toBeGreaterThan(0);
-    });
-  });
-
-  describe('getAIAdapter factory', () => {
-    it('should return MockAIAdapter when mockAi is true', () => {
-      const adapter = getAIAdapter({ mockAi: true });
-      expect(adapter.providerName).toBe('mock');
-    });
-
+  describe('getAIAdapter factory (Ollama Exclusive)', () => {
     it('should return OllamaAIAdapter by default when no settings provided', () => {
       const adapter = getAIAdapter();
       expect(adapter.providerName).toBe('ollama');
     });
 
-    it('should return OllamaAIAdapter when provider is ollama', () => {
-      const adapter = getAIAdapter({ provider: 'ollama' });
+    it('should return OllamaAIAdapter regardless of input parameters', () => {
+      const adapter = getAIAdapter({ provider: 'ollama', model: 'llama3.2:3b' });
       expect(adapter.providerName).toBe('ollama');
-    });
-
-    it('should fallback to MockAIAdapter if anthropic API key is placeholder', () => {
-      const adapter = getAIAdapter({ provider: 'anthropic', apiKey: 'placeholder' });
-      expect(adapter.providerName).toBe('mock');
     });
   });
 

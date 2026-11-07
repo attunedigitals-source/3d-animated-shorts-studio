@@ -198,11 +198,8 @@ export const useStudioStore = create<StudioState>((set, get) => ({
 
       const payload = {
         ai: {
-          provider: aiSettings.provider,
-          model: aiSettings.model,
-          apiKey: aiSettings.apiKey,
-          baseUrl: aiSettings.baseUrl,
-          mockAi: aiSettings.provider === 'mock',
+          provider: 'ollama' as const,
+          model: aiSettings.model || 'llama3.2:3b',
         },
         voice: {
           provider: voiceSettings.provider,
@@ -264,21 +261,14 @@ export const useStudioStore = create<StudioState>((set, get) => ({
         set({ user: session.user, isDevAuth: Boolean(session.isDevFallback) });
       }
 
-      const validProviders = ['ollama', 'openai', 'anthropic', 'mock'];
-      const rawProvider = validProviders.includes(localAi.provider)
-        ? localAi.provider
-        : (settingsRes?.ai?.provider || 'ollama');
       let rawModel = localAi.model || settingsRes?.ai?.model || 'llama3.2:3b';
       if (!rawModel || rawModel.includes(':free') || rawModel.includes('/')) {
         rawModel = 'llama3.2:3b';
       }
 
       const effectiveAi = {
-        provider: rawProvider,
+        provider: 'ollama' as const,
         model: rawModel,
-        apiKey: localAi.apiKey || settingsRes?.ai?.apiKey || '',
-        baseUrl: localAi.baseUrl || settingsRes?.ai?.baseUrl || '',
-        mockAi: localAi.mockAi ?? settingsRes?.ai?.mockAi ?? false,
       };
 
       const effectiveVoice = {
@@ -307,10 +297,6 @@ export const useStudioStore = create<StudioState>((set, get) => ({
         isSupabaseConfigured,
         availableModels: settingsRes?.availableModels || [
           { id: 'llama3.2:3b', name: 'Llama 3.2 3B (Self-Hosted Ollama · AWS EC2)', provider: 'ollama', tier: 'fast', description: 'Self-hosted Ollama instance running llama3.2:3b on AWS EC2' },
-          { id: 'gpt-4o', name: 'GPT-4o (Direct)', provider: 'openai', tier: 'flagship', description: 'Direct OpenAI GPT-4o' },
-          { id: 'gpt-4o-mini', name: 'GPT-4o Mini (Direct)', provider: 'openai', tier: 'fast', description: 'Fast, cost-efficient direct OpenAI model' },
-          { id: 'claude-3-5-sonnet-20241022', name: 'Claude 3.5 Sonnet (Direct)', provider: 'anthropic', tier: 'flagship', description: 'Direct Anthropic Claude integration' },
-          { id: 'mock-story-v1', name: 'Mock Engine V1', provider: 'mock', tier: 'mock', description: 'Instant offline deterministic responses' },
         ],
       });
 

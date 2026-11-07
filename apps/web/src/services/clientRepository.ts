@@ -2,8 +2,8 @@
  * Client-Side Direct Repository & AI Execution Engine
  *
  * Provides direct browser-side data persistence (via Supabase client or LocalStorage)
- * and direct AI story/script/scene generation (via direct OpenAI/Anthropic or deterministic Mock engine)
  * when running in standalone web mode or when the backend server is unreachable.
+ * AI story/script/scene generation routes strictly through the Express backend.
  */
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
@@ -21,12 +21,6 @@ import {
   StructuredScene,
   AISettings,
 } from '@studio/types';
-import {
-  OpenAICompatibleAdapter,
-  AnthropicAIAdapter,
-  MockAIAdapter,
-  IAIProviderAdapter,
-} from '@studio/ai-adapters';
 
 const LOCAL_PROJECTS_KEY = 'studio_local_projects';
 
@@ -356,70 +350,14 @@ export class ClientRepository {
   // Story, Script & Scene Operations
   // ----------------------------------------------------
 
-  private getAIAdapterInstance(settings?: Partial<AISettings>): IAIProviderAdapter {
-    let effectiveSettings = { ...settings };
-    if ((!effectiveSettings.apiKey || !effectiveSettings.provider) && typeof localStorage !== 'undefined') {
-      try {
-        const stored = JSON.parse(localStorage.getItem('studio_ai_settings') || '{}');
-        effectiveSettings = { ...stored, ...effectiveSettings };
-      } catch { }
-    }
-
-    const provider = effectiveSettings.provider || 'ollama';
-    const apiKey = effectiveSettings.apiKey?.trim() || '';
-
-    if (provider === 'mock') {
-      return new MockAIAdapter();
-    }
-
-    if (provider === 'ollama') {
-      throw new Error(
-        'Direct browser connections to Ollama are prohibited. All Ollama requests must route through the Studio Express API backend. Please ensure the Express API is running.',
-      );
-    }
-
-    if (!apiKey || apiKey.includes('placeholder')) {
-      return new MockAIAdapter();
-    }
-
-    if (provider === 'openai') {
-      return new OpenAICompatibleAdapter();
-    }
-
-    if (provider === 'anthropic') {
-      return new AnthropicAIAdapter();
-    }
-
-    return new MockAIAdapter();
-  }
-
   async generateStory(
-    projectId: string,
-    options: StoryPromptOptions,
-    settings?: Partial<AISettings>,
+    _projectId: string,
+    _options: StoryPromptOptions,
+    _settings?: Partial<AISettings>,
   ): Promise<{ story: StoryRecord }> {
-    let effectiveSettings = { ...settings };
-    if ((!effectiveSettings.apiKey || !effectiveSettings.provider) && typeof localStorage !== 'undefined') {
-      try {
-        const stored = JSON.parse(localStorage.getItem('studio_ai_settings') || '{}');
-        effectiveSettings = { ...stored, ...effectiveSettings };
-      } catch { }
-    }
-
-    const adapter = this.getAIAdapterInstance(effectiveSettings);
-    const { story } = await adapter.generateStory(options, effectiveSettings);
-
-    const now = new Date().toISOString();
-    const record: StoryRecord = {
-      ...story,
-      id: `story_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
-      projectId,
-      createdAt: now,
-      updatedAt: now,
-    };
-
-    await this.saveStory(projectId, story, options);
-    return { story: record };
+    throw new Error(
+      'Direct browser AI execution is not supported. All story generation, scriptwriting, and scene breakdown requests must route through the Studio Express API backend connected to Ollama on AWS EC2.',
+    );
   }
 
   async saveStory(
@@ -476,38 +414,13 @@ export class ClientRepository {
   }
 
   async generateScript(
-    projectId: string,
-    targetDurationSeconds: number = 30,
-    settings?: Partial<AISettings>,
+    _projectId: string,
+    _targetDurationSeconds: number = 30,
+    _settings?: Partial<AISettings>,
   ): Promise<{ script: ScriptRecord }> {
-    let effectiveSettings = { ...settings };
-    if ((!effectiveSettings.apiKey || !effectiveSettings.provider) && typeof localStorage !== 'undefined') {
-      try {
-        const stored = JSON.parse(localStorage.getItem('studio_ai_settings') || '{}');
-        effectiveSettings = { ...stored, ...effectiveSettings };
-      } catch { }
-    }
-
-    const project = await this.getProject(projectId);
-    if (!project.story) {
-      throw new Error('Please create or load an approved story before generating a script.');
-    }
-
-    const adapter = this.getAIAdapterInstance(effectiveSettings);
-    const { script } = await adapter.generateScript(project.story, targetDurationSeconds, effectiveSettings);
-
-    const now = new Date().toISOString();
-    const record: ScriptRecord = {
-      ...script,
-      id: `script_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
-      projectId,
-      revisionNumber: 1,
-      createdAt: now,
-      updatedAt: now,
-    };
-
-    await this.saveScript(projectId, script);
-    return { script: record };
+    throw new Error(
+      'Direct browser AI execution is not supported. All story generation, scriptwriting, and scene breakdown requests must route through the Studio Express API backend connected to Ollama on AWS EC2.',
+    );
   }
 
   async saveScript(projectId: string, script: ScriptDocument): Promise<ScriptRecord> {
@@ -553,25 +466,10 @@ export class ClientRepository {
     return record;
   }
 
-  async breakdownScenes(projectId: string, settings?: Partial<AISettings>): Promise<{ scenes: StructuredScene[] }> {
-    let effectiveSettings = { ...settings };
-    if ((!effectiveSettings.apiKey || !effectiveSettings.provider) && typeof localStorage !== 'undefined') {
-      try {
-        const stored = JSON.parse(localStorage.getItem('studio_ai_settings') || '{}');
-        effectiveSettings = { ...stored, ...effectiveSettings };
-      } catch { }
-    }
-
-    const project = await this.getProject(projectId);
-    if (!project.script) {
-      throw new Error('Please create or load an approved script before breaking down scenes.');
-    }
-
-    const adapter = this.getAIAdapterInstance(effectiveSettings);
-    const { scenes } = await adapter.breakdownScenes(project.script, project.story, effectiveSettings);
-
-    await this.saveScenes(projectId, scenes);
-    return { scenes };
+  async breakdownScenes(_projectId: string, _settings?: Partial<AISettings>): Promise<{ scenes: StructuredScene[] }> {
+    throw new Error(
+      'Direct browser AI execution is not supported. All story generation, scriptwriting, and scene breakdown requests must route through the Studio Express API backend connected to Ollama on AWS EC2.',
+    );
   }
 
   async saveScenes(projectId: string, scenes: StructuredScene[]): Promise<StructuredScene[]> {
