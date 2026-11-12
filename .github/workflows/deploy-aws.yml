@@ -1,0 +1,120 @@
+name: Deploy to AWS EC2
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: production-ec2
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    name: Verify & Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository at exact commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Setup Node.js (v20.x)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+
+      - name: Setup pnpm (v9.12.3)
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.12.3
+          run_install: false
+
+      - name: Get pnpm store directory
+        id: pnpm-cache
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - name: Setup pnpm cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Run automated test suites
+        run: pnpm test
+
+      - name: Run TypeScript typecheck
+        run: pnpm typecheck
+
+      - name: Build production application
+        run: pnpm build
+
+  deploy:
+    name: Deploy to EC2
+    needs: verify
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository at exact commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Configure SSH agent & host key verification
+        env:
+          SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.EC2_KNOWN_HOSTS }}
+        run: |
+          if [ -z "$SSH_KEY" ]; then
+            echo "::error::GitHub secret EC2_SSH_KEY is not configured!"
+            exit 1
+          fi
+          if [ -z "$KNOWN_HOSTS" ]; then
+            echo "::error::GitHub secret EC2_KNOWN_HOSTS is not configured!"
+            exit 1
+          fi
+
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          echo "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+
+          eval $(ssh-agent -s)
+          echo "$SSH_KEY" | tr -d '\r' | ssh-add -
+          echo "SSH_AUTH_SOCK=$SSH_AUTH_SOCK" >> $GITHUB_ENV
+          echo "SSH_AGENT_PID=$SSH_AGENT_PID" >> $GITHUB_ENV
+
+      - name: Execute EC2 remote deployment
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_USER: ${{ secrets.EC2_USER }}
+          TARGET_SHA: ${{ github.sha }}
+        run: |
+          if [ -z "$EC2_HOST" ]; then
+            echo "::error::GitHub secret EC2_HOST is not configured!"
+            exit 1
+          fi
+          if [ -z "$EC2_USER" ]; then
+            echo "::error::GitHub secret EC2_USER is not configured!"
+            exit 1
+          fi
+
+          echo "[+] Connecting via SSH to ${EC2_USER}@${EC2_HOST}..."
+          echo "[+] Deploying target commit: ${TARGET_SHA}"
+
+          ssh "${EC2_USER}@${EC2_HOST}" "bash -s" < scripts/deploy-ec2.sh "${TARGET_SHA}"
+
+      - name: Cleanup SSH agent
+        if: always()
+        run: |
+          if [ -n "$SSH_AGENT_PID" ]; then
+            kill "$SSH_AGENT_PID" 2>/dev/null || true
+          fi
+

@@ -1,0 +1,32 @@
+{
+  "name": "3d-animated-shorts-studio-monorepo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Pure AI 3D Animated Video Studio via Google Gemini Ecosystem & ai33.pro Voice",
+  "packageManager": "pnpm@9.12.3",
+  "scripts": {
+    "build": "pnpm -r run build",
+    "test": "pnpm -r run test",
+    "typecheck": "pnpm -r run typecheck",
+    "dev:web": "pnpm --filter @studio/web dev",
+    "dev:api": "pnpm --filter @studio/api dev"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.7",
+    "prettier": "^3.3.3",
+    "typescript": "^5.6.3"
+  },
+  "pnpm": {
+    "overrides": {
+      "rollup": "npm:@rollup/wasm-node@^4.34.8"
+    }
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  }
+}
