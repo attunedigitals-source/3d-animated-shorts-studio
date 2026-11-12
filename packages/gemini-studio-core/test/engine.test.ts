@@ -90,3 +90,4 @@ describe('Pure AI 3D Studio Core Engine', () => {
     expect(project.status).toBe('completed');
   });
 });
+

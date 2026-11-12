@@ -1,5 +1,11 @@
 import { create } from 'zustand';
-import { Pure3DStudioProject, VideoFormat } from '@studio/types';
+import {
+  Pure3DStudioProject,
+  VideoFormat,
+  GeminiModelSuiteConfig,
+  DEFAULT_MODEL_SUITE,
+} from '@studio/types';
+import { Pure3DStudioPipelineOrchestrator } from '@studio/gemini-studio-core';
 
 export interface GenerationStageInfo {
   id: string;
@@ -66,6 +72,7 @@ interface PureStudioState {
   selectedVoice: string;
   geminiKey: string;
   ai33Key: string;
+  modelSuite: GeminiModelSuiteConfig;
 
   isGenerating: boolean;
   currentStage: string;
@@ -87,6 +94,7 @@ interface PureStudioState {
   setSelectedVoice: (voice: string) => void;
   setGeminiKey: (key: string) => void;
   setAi33Key: (key: string) => void;
+  setModelSuite: (suite: Partial<GeminiModelSuiteConfig>) => void;
   setIsSettingsOpen: (open: boolean) => void;
   setIsSheetModalOpen: (open: boolean) => void;
   setCurrentTimeMs: (ms: number) => void;
@@ -104,6 +112,7 @@ export const usePureStudioStore = create<PureStudioState>((set, get) => ({
   selectedVoice: 'narrator-cinematic-deep-01',
   geminiKey: '',
   ai33Key: '',
+  modelSuite: DEFAULT_MODEL_SUITE,
 
   isGenerating: false,
   currentStage: '',
@@ -135,6 +144,13 @@ export const usePureStudioStore = create<PureStudioState>((set, get) => ({
       localStorage.setItem('AI33_API_KEY', ai33Key);
     } catch {}
   },
+  setModelSuite: (suite) => {
+    const updated = { ...get().modelSuite, ...suite };
+    set({ modelSuite: updated });
+    try {
+      localStorage.setItem('GEMINI_MODEL_SUITE', JSON.stringify(updated));
+    } catch {}
+  },
   setIsSettingsOpen: (isSettingsOpen) => set({ isSettingsOpen }),
   setIsSheetModalOpen: (isSheetModalOpen) => set({ isSheetModalOpen }),
   setCurrentTimeMs: (currentTimeMs) => set({ currentTimeMs }),
@@ -145,7 +161,9 @@ export const usePureStudioStore = create<PureStudioState>((set, get) => ({
     try {
       const gKey = localStorage.getItem('GEMINI_API_KEY') || '';
       const vKey = localStorage.getItem('AI33_API_KEY') || '';
-      set({ geminiKey: gKey, ai33Key: vKey });
+      const savedSuite = localStorage.getItem('GEMINI_MODEL_SUITE');
+      const suite = savedSuite ? { ...DEFAULT_MODEL_SUITE, ...JSON.parse(savedSuite) } : DEFAULT_MODEL_SUITE;
+      set({ geminiKey: gKey, ai33Key: vKey, modelSuite: suite });
     } catch {}
   },
 
@@ -163,40 +181,55 @@ export const usePureStudioStore = create<PureStudioState>((set, get) => ({
     });
 
     try {
-      const stageInterval = setInterval(() => {
-        const curr = get().progressPercent;
-        if (curr < 85 && get().isGenerating) {
-          set({ progressPercent: curr + 5 });
-        }
-      }, 1000);
+      let projectResult: Pure3DStudioProject | null = null;
 
-      const response = await fetch('/api/pipeline/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      // 1. First attempt generation through the backend API
+      try {
+        const response = await fetch('/api/pipeline/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            topic,
+            aspectRatio,
+            targetDurationSeconds,
+            voiceId: selectedVoice,
+            geminiKey,
+            ai33Key,
+          }),
+        });
+
+        if (response.ok) {
+          const resJson = await response.json();
+          if (resJson.success && resJson.data) {
+            projectResult = resJson.data;
+          }
+        }
+      } catch (networkErr) {
+        console.warn('[Backend API unreachable, using direct browser orchestrator]:', networkErr);
+      }
+
+      // 2. Direct browser orchestration fallback if server is unreachable
+      if (!projectResult) {
+        const orchestrator = new Pure3DStudioPipelineOrchestrator();
+        projectResult = await orchestrator.runPipeline({
           topic,
           aspectRatio,
           targetDurationSeconds,
           voiceId: selectedVoice,
           geminiKey,
           ai33Key,
-        }),
-      });
-
-      clearInterval(stageInterval);
-
-      if (!response.ok) {
-        const errJson = await response.json().catch(() => ({}));
-        throw new Error(errJson?.error?.message || `Server returned ${response.status}`);
+          onProgress: (stage, percent) => {
+            set({ currentStage: stage, progressPercent: percent });
+          },
+        });
       }
 
-      const result = await response.json();
-      if (!result.success || !result.data) {
-        throw new Error(result?.error?.message || 'Failed to generate 3D project.');
+      if (!projectResult) {
+        throw new Error('Failed to generate 3D project. Please check your credentials.');
       }
 
       set({
-        project: result.data,
+        project: projectResult,
         isGenerating: false,
         currentStage: 'completed',
         progressPercent: 100,
@@ -211,3 +244,4 @@ export const usePureStudioStore = create<PureStudioState>((set, get) => ({
     }
   },
 }));
+

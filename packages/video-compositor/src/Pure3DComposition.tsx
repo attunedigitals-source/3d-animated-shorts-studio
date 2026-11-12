@@ -242,3 +242,4 @@ export const Pure3DComposition: React.FC<Pure3DCompositionProps> = ({
     </AbsoluteFill>
   );
 };
+

@@ -38,3 +38,4 @@ describe('Pure AI 3D Studio API Endpoints', () => {
     expect(res.body.data.qaReport.passed).toBe(true);
   });
 });
+

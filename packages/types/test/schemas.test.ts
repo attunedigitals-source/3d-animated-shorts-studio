@@ -134,3 +134,4 @@ describe('Pure AI 3D Studio Schema Validation', () => {
     expect(parsed.status).toBe('completed');
   });
 });
+

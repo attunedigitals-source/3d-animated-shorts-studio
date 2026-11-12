@@ -204,3 +204,85 @@ export const Pure3DStudioProjectSchema = z.object({
 });
 
 export type Pure3DStudioProject = z.infer<typeof Pure3DStudioProjectSchema>;
+
+// ==============================================================================
+// 8. GEMINI PLUS MODEL CATALOGUE (From active API Query List)
+// ==============================================================================
+
+export interface GeminiModelEntry {
+  id: string;
+  name: string;
+  category: 'STABLE' | 'PREVIEW';
+  defaultFor?: 'researcher' | 'screenwriter' | 'continuity' | 'image_generator' | 'director' | 'music' | 'qa' | 'ui';
+}
+
+export const AVAILABLE_GEMINI_MODELS: GeminiModelEntry[] = [
+  // STABLE
+  { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', category: 'STABLE' },
+  { id: 'gemini-2.5-flash-lite', name: 'Gemini 2.5 Flash-Lite', category: 'STABLE' },
+  { id: 'gemini-3.1-flash-lite', name: 'Gemini 3.1 Flash Lite', category: 'STABLE', defaultFor: 'ui' },
+  { id: 'gemini-3.5-flash', name: 'Gemini 3.5 Flash', category: 'STABLE' },
+  { id: 'gemini-3.5-flash-lite', name: 'Gemini 3.5 Flash Lite', category: 'STABLE' },
+  { id: 'gemini-3.6-flash', name: 'Gemini 3.6 Flash', category: 'STABLE' },
+  { id: 'gemini-3.7-flash', name: 'Gemini 3.7 Flash', category: 'STABLE', defaultFor: 'director' },
+  { id: 'gemini-3.8-flash', name: 'Gemini 3.8 Flash', category: 'STABLE' },
+  { id: 'gemini-flash-latest', name: 'Gemini Flash Latest', category: 'STABLE' },
+  { id: 'gemini-flash-lite-latest', name: 'Gemini Flash-Lite Latest', category: 'STABLE' },
+  { id: 'gemini-omni-1.1-flash', name: 'Gemini Omni 1.1 Flash', category: 'STABLE' },
+  { id: 'gemini-omni-1.2-flash', name: 'Gemini Omni 1.2 Flash', category: 'STABLE', defaultFor: 'qa' },
+  { id: 'gemini-2.5-flash-image', name: 'Nano Banana (gemini-2.5-flash-image)', category: 'STABLE' },
+  { id: 'gemini-3.1-flash-image', name: 'Nano Banana 2 (gemini-3.1-flash-image)', category: 'STABLE' },
+  { id: 'gemini-3.1-flash-lite-image', name: 'Nano Banana 2 Lite (gemini-3.1-flash-lite-image)', category: 'STABLE' },
+  { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', category: 'STABLE', defaultFor: 'screenwriter' },
+  { id: 'gemini-3.5-transcribe', name: 'Gemini 3.5 Transcribe', category: 'STABLE' },
+  { id: 'gemini-4-argon', name: 'Gemini 4 Argon', category: 'STABLE', defaultFor: 'continuity' },
+  { id: 'gemini-4-carbon', name: 'Gemini 4 Carbon', category: 'STABLE' },
+  { id: 'gemini-pro-latest', name: 'Gemini Pro Latest', category: 'STABLE' },
+  { id: 'gemma-4-26b-a4b-it', name: 'Gemma 4 26B A4B IT', category: 'STABLE' },
+  { id: 'gemma-4-31b-it', name: 'Gemma 4 31B IT', category: 'STABLE' },
+  { id: 'lyria-3.5', name: 'Lyria 3.5', category: 'STABLE', defaultFor: 'music' },
+  { id: 'gemini-nano-banana-2.1', name: 'Nano Banana 2.1', category: 'STABLE' },
+  { id: 'gemini-3-pro-image', name: 'Nano Banana Pro (gemini-3-pro-image)', category: 'STABLE', defaultFor: 'image_generator' },
+  // PREVIEW
+  { id: 'gemini-3-flash-preview', name: 'Gemini 3 Flash Preview', category: 'PREVIEW' },
+  { id: 'gemini-3.1-flash-lite-preview', name: 'Gemini 3.1 Flash Lite Preview', category: 'PREVIEW' },
+  { id: 'gemini-omni-flash-preview', name: 'Gemini Omni Flash Preview', category: 'PREVIEW' },
+  { id: 'gemini-3.1-flash-image-preview', name: 'Nano Banana 2 Preview (gemini-3.1-flash-image-preview)', category: 'PREVIEW' },
+  { id: 'antigravity-preview-05-2026', name: 'Antigravity Agent Preview (05-2026)', category: 'PREVIEW' },
+  { id: 'antigravity-preview-09-2026', name: 'Antigravity Agent Preview (09-2026)', category: 'PREVIEW' },
+  { id: 'antigravity-preview-latest', name: 'Antigravity Agent Preview Latest', category: 'PREVIEW' },
+  { id: 'deep-research-max-preview-04-2026', name: 'Deep Research Max Preview (deep-research-max-preview-04-2026)', category: 'PREVIEW', defaultFor: 'researcher' },
+  { id: 'deep-research-preview-04-2026', name: 'Deep Research Preview (deep-research-preview-04-2026)', category: 'PREVIEW' },
+  { id: 'deep-research-pro-preview-12-2025', name: 'Deep Research Pro Preview (deep-research-pro-preview-12-2025)', category: 'PREVIEW' },
+  { id: 'gemini-2.5-computer-use-preview-10-2025', name: 'Gemini 2.5 Computer Use Preview', category: 'PREVIEW' },
+  { id: 'gemini-3.1-pro-preview', name: 'Gemini 3.1 Pro Preview', category: 'PREVIEW' },
+  { id: 'gemini-3.1-pro-preview-customtools', name: 'Gemini 3.1 Pro Preview Custom Tools', category: 'PREVIEW' },
+  { id: 'gemini-robotics-er-2-preview', name: 'Gemini Robotics-ER 2 Preview', category: 'PREVIEW' },
+  { id: 'lyria-3-clip-preview', name: 'Lyria 3 Clip Preview', category: 'PREVIEW' },
+  { id: 'lyria-3-pro-preview', name: 'Lyria 3 Pro Preview', category: 'PREVIEW' },
+  { id: 'gemini-3-pro-image-preview', name: 'Nano Banana Pro (gemini-3-pro-image-preview)', category: 'PREVIEW' },
+  { id: 'nano-banana-pro-preview', name: 'Nano Banana Pro (nano-banana-pro-preview)', category: 'PREVIEW' },
+];
+
+export interface GeminiModelSuiteConfig {
+  researcherModel: string;
+  screenwriterModel: string;
+  continuityModel: string;
+  imageModel: string;
+  directorModel: string;
+  musicModel: string;
+  qaModel: string;
+  uiModel: string;
+}
+
+export const DEFAULT_MODEL_SUITE: GeminiModelSuiteConfig = {
+  researcherModel: 'deep-research-max-preview-04-2026',
+  screenwriterModel: 'gemini-2.5-pro',
+  continuityModel: 'gemini-4-argon',
+  imageModel: 'gemini-3-pro-image',
+  directorModel: 'gemini-3.7-flash',
+  musicModel: 'lyria-3.5',
+  qaModel: 'gemini-omni-1.2-flash',
+  uiModel: 'gemini-3.1-flash-lite',
+};
+

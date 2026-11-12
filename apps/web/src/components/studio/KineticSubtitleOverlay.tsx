@@ -69,3 +69,4 @@ export const KineticSubtitleOverlay: React.FC<KineticSubtitleOverlayProps> = ({
     </div>
   );
 };
+

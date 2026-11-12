@@ -76,3 +76,4 @@ if (process.env.NODE_ENV !== 'test' && !process.env.VERCEL) {
     console.log(`[API] Pure AI 3D Animated Studio API listening on port ${port}`);
   });
 }
+

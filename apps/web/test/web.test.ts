@@ -20,3 +20,4 @@ describe('Pure 3D Studio Web App', () => {
     expect(updated.topic).toBe('Voyager 1 Deep Space');
   });
 });
+

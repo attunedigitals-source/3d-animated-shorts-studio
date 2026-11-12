@@ -31,6 +31,7 @@ export const Pure3DStudioView: React.FC = () => {
     aspectRatio,
     targetDurationSeconds,
     selectedVoice,
+    modelSuite,
     isGenerating,
     currentStage,
     progressPercent,
@@ -77,11 +78,17 @@ export const Pure3DStudioView: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="hidden lg:flex items-center gap-1.5 text-xs text-slate-400 bg-slate-900 px-3 py-1.5 rounded-xl border border-slate-800">
+          <button
+            onClick={() => setIsSettingsOpen(true)}
+            className="hidden lg:flex items-center gap-1.5 text-xs text-slate-400 bg-slate-900 px-3 py-1.5 rounded-xl border border-slate-800 hover:border-amber-400/50 transition cursor-pointer"
+            title="Configure Gemini Models"
+          >
             <Cpu className="w-3.5 h-3.5 text-amber-400" />
-            <span>Active Suite:</span>
-            <span className="font-mono text-slate-200">gemini-3-pro-image • gemini-2.5-pro • lyria-3.5</span>
-          </div>
+            <span>Suite:</span>
+            <span className="font-mono text-slate-200">
+              {modelSuite.imageModel} • {modelSuite.screenwriterModel} • {modelSuite.musicModel}
+            </span>
+          </button>
 
           <button
             onClick={() => setIsSettingsOpen(true)}
@@ -385,3 +392,4 @@ export const Pure3DStudioView: React.FC = () => {
     </div>
   );
 };
+

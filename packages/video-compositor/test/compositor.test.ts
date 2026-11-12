@@ -7,3 +7,4 @@ describe('Video Compositor Module', () => {
     expect(typeof Pure3DComposition).toBe('function');
   });
 });
+
