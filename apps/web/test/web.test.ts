@@ -7,7 +7,7 @@ describe('Pure 3D Studio Web App', () => {
     expect(state.topic).toContain('Napoleon');
     expect(state.aspectRatio).toBe('9:16');
     expect(GENERATION_STAGES.length).toBe(8);
-    expect(GENERATION_STAGES[0]!.model).toContain('deep-research');
+    expect(GENERATION_STAGES[0]!.model).toContain('gemini-3.1-flash-lite');
   });
 
   it('updates aspect ratio and topic smoothly', () => {

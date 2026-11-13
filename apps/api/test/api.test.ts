@@ -9,7 +9,7 @@ describe('Pure AI 3D Studio API Endpoints (Phase 0 Repaired)', () => {
     vi.restoreAllMocks();
 
     global.fetch = vi.fn().mockImplementation(async (url: string) => {
-      if (url.includes('deep-research')) {
+      if (url.includes('deep-research') || url.includes('gemini-3.1-flash-lite')) {
         return {
           ok: true,
           status: 200,

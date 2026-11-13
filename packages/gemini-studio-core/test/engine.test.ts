@@ -17,7 +17,7 @@ describe('Pure AI 3D Studio Core Engine (Happy Path with Mocked Providers)', () 
 
     global.fetch = vi.fn().mockImplementation(async (url: string) => {
       // 1. Deep Research Mock
-      if (url.includes('deep-research')) {
+      if (url.includes('deep-research') || url.includes('gemini-3.1-flash-lite') || url.includes('gemini-3.6-flash')) {
         return {
           ok: true,
           status: 200,

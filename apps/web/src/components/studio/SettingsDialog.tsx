@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { X, Key, Check, Sparkles, Cpu, SlidersHorizontal, ShieldCheck } from 'lucide-react';
-import { AVAILABLE_GEMINI_MODELS, GeminiModelSuiteConfig, GeminiModelEntry } from '@studio/types';
+import { AVAILABLE_GEMINI_MODELS, DEEP_RESEARCH_MODELS, GeminiModelSuiteConfig, GeminiModelEntry } from '@studio/types';
 import { usePureStudioStore } from '../../stores/usePureStudioStore';
 
 interface SettingsDialogProps {
@@ -143,19 +143,21 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({ isOpen, onClose 
                 {/* 1. Deep Researcher */}
                 <div className="bg-slate-950/80 p-3 rounded-xl border border-slate-800 space-y-1">
                   <label className="font-bold text-slate-200 block">
-                    1. Investigative Researcher
+                    1. Investigative Researcher (Auto-Switch Pool)
                   </label>
-                  <p className="text-[11px] text-slate-400">Viral hook & historical facts discovery</p>
+                  <p className="text-[11px] text-slate-400">Smoothly switches across 8 models based on availability</p>
                   <select
                     value={localModels.researcherModel}
                     onChange={(e) => handleModelChange('researcherModel', e.target.value)}
                     className="w-full bg-slate-900 border border-slate-700 text-white rounded-lg p-2 text-xs font-mono focus:border-amber-400 outline-none"
                   >
-                    {AVAILABLE_GEMINI_MODELS.map((m: GeminiModelEntry) => (
-                      <option key={m.id} value={m.id}>
-                        {m.name} ({m.id}) [{m.category}]
-                      </option>
-                    ))}
+                    <optgroup label="Deep Research Priority Pool (Auto-Switch)">
+                      {DEEP_RESEARCH_MODELS.map((m: GeminiModelEntry, idx: number) => (
+                        <option key={m.id} value={m.id}>
+                          #{idx + 1} {m.name} ({m.id}) [{m.category}]
+                        </option>
+                      ))}
+                    </optgroup>
                   </select>
                 </div>
 

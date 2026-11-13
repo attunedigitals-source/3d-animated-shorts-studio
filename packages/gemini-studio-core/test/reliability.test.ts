@@ -16,6 +16,7 @@ import {
 import {
   assertModelCapable,
   getModelRegistryEntry,
+  DEEP_RESEARCH_MODEL_POOL,
 } from '../src/gemini-model-registry';
 import { CharacterDNA, NarrativeBeat, CanonicalCharacterSheet, RenderedShot } from '@studio/types';
 
@@ -306,5 +307,75 @@ describe('Phase 0: Engine Reliability & Security Test Suite', () => {
 
     expect(sanitized).not.toContain(rawApiKey);
     expect(sanitized).toContain('key=[REDACTED]');
+  });
+
+  // 15. Smooth Model Switching across the 8-Model Deep Research Pool
+  it('smoothly switches across the 8 Deep Research models depending on availability', async () => {
+    expect(DEEP_RESEARCH_MODEL_POOL).toEqual([
+      'gemini-3.1-flash-lite',
+      'gemini-3.6-flash',
+      'gemini-3.5-flash-lite',
+      'gemini-3.8-flash',
+      'gemini-4-hydrogen',
+      'gemini-2.5-flash-lite',
+      'gemini-3-flash',
+      'gemini-2.5-flash',
+    ]);
+
+    const attemptedModels: string[] = [];
+
+    global.fetch = vi.fn().mockImplementation(async (url: string) => {
+      const match = url.match(/\/models\/([^:]+):generateContent/);
+      const modelId = match?.[1] || 'unknown';
+      attemptedModels.push(modelId);
+
+      // Simulate first 4 models unavailable (404 / 429 / 503), and #5 (gemini-4-hydrogen) available
+      if (modelId !== 'gemini-4-hydrogen') {
+        return {
+          ok: false,
+          status: modelId === 'gemini-3.6-flash' ? 429 : 404,
+          headers: new Headers(),
+          json: async () => ({ error: { message: `Model ${modelId} unavailable` } }),
+        };
+      }
+
+      return {
+        ok: true,
+        status: 200,
+        headers: new Headers(),
+        json: async () => ({
+          candidates: [
+            {
+              content: {
+                parts: [
+                  {
+                    text: JSON.stringify({
+                      viralHooks: ['Hook from Gemini 4 Hydrogen'],
+                      obscureFacts: ['Fact 1'],
+                      retentionAngles: ['Angle 1'],
+                      pacingNotes: 'Fast pacing',
+                      summary: 'Summary',
+                    }),
+                  },
+                ],
+              },
+            },
+          ],
+        }),
+      };
+    });
+
+    const engine = new Gemini3DStudioEngine('AIzaSy_valid_mock_key_12345');
+    const result = await engine.researchTopic('Ancient Rome', 'AIzaSy_valid_mock_key_12345');
+
+    expect(attemptedModels).toEqual([
+      'gemini-3.1-flash-lite',
+      'gemini-3.6-flash',
+      'gemini-3.5-flash-lite',
+      'gemini-3.8-flash',
+      'gemini-4-hydrogen',
+    ]);
+    expect(result.modelUsed).toBe('gemini-4-hydrogen');
+    expect(result.viralHooks[0]).toBe('Hook from Gemini 4 Hydrogen');
   });
 });

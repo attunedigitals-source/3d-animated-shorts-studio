@@ -22,7 +22,11 @@ import {
   AssetProvenance,
   QAStatus,
 } from '@studio/types';
-import { assertModelCapable, getModelRegistryEntry } from './gemini-model-registry';
+import {
+  assertModelCapable,
+  getModelRegistryEntry,
+  DEEP_RESEARCH_MODEL_POOL,
+} from './gemini-model-registry';
 
 export class GeminiProviderError extends Error {
   constructor(
@@ -45,6 +49,7 @@ export interface ResearchResult {
   pacingNotes: string;
   summary: string;
   provenance: AssetProvenance;
+  modelUsed?: string;
 }
 
 export interface ScreenplayResult {
@@ -310,10 +315,14 @@ export class Gemini3DStudioEngine {
   }
 
   // ============================================================================
-  // 1. INVESTIGATIVE RESEARCHER (deep-research-max-preview-04-2026)
+  // 1. INVESTIGATIVE RESEARCHER (8-Model Smooth Auto-Switching Pool)
   // ============================================================================
 
-  async researchTopic(topic: string, overrideKey?: string, modelId: string = 'deep-research-max-preview-04-2026'): Promise<ResearchResult> {
+  async researchTopic(
+    topic: string,
+    overrideKey?: string,
+    modelId: string = 'gemini-3.1-flash-lite'
+  ): Promise<ResearchResult> {
     if (!topic || !topic.trim()) {
       throw new GeminiProviderError('Topic cannot be empty for deep research.', 400, 'INVALID_TOPIC', false);
     }
@@ -331,36 +340,84 @@ Provide in JSON:
   "summary": "Concise dramatic synopsis"
 }`;
 
-    const raw = await this.invokeGemini(
-      modelId,
-      prompt,
-      { systemInstruction: 'Output only valid JSON.', overrideKey }
-    );
+    const cleanPreferred = (modelId || 'gemini-3.1-flash-lite').replace(/^models\//, '');
+    const candidateModels = Array.from(new Set([cleanPreferred, ...DEEP_RESEARCH_MODEL_POOL]));
 
-    try {
-      const clean = raw.replace(/```json/g, '').replace(/```/g, '').trim();
-      const parsed = JSON.parse(clean);
+    let lastError: GeminiProviderError | null = null;
 
-      if (!parsed.viralHooks || !Array.isArray(parsed.viralHooks) || parsed.viralHooks.length === 0) {
-        throw new Error('Research response is missing required viralHooks array.');
+    for (const candidateModel of candidateModels) {
+      try {
+        const raw = await this.invokeGemini(candidateModel, prompt, {
+          systemInstruction: 'Output only valid JSON.',
+          overrideKey,
+          maxRetries: 0,
+        });
+
+        const clean = raw.replace(/```json/g, '').replace(/```/g, '').trim();
+        let parsed: any;
+        try {
+          parsed = JSON.parse(clean);
+        } catch (parseErr: any) {
+          throw new GeminiProviderError(
+            `Failed to parse Gemini deep research JSON output from ${candidateModel}: ${parseErr.message}`,
+            500,
+            'MALFORMED_RESEARCH_JSON',
+            false
+          );
+        }
+
+        if (!parsed.viralHooks || !Array.isArray(parsed.viralHooks) || parsed.viralHooks.length === 0) {
+          throw new GeminiProviderError(
+            `Research response from ${candidateModel} is missing required viralHooks array.`,
+            500,
+            'MALFORMED_RESEARCH_JSON',
+            false
+          );
+        }
+
+        return {
+          viralHooks: parsed.viralHooks,
+          obscureFacts: parsed.obscureFacts || [],
+          retentionAngles: parsed.retentionAngles || [],
+          pacingNotes: parsed.pacingNotes || 'Escalate rhythm steadily towards climax.',
+          summary: parsed.summary || topic,
+          provenance: 'ai_generated',
+          modelUsed: candidateModel,
+        };
+      } catch (err: any) {
+        const geminiErr: GeminiProviderError =
+          err instanceof GeminiProviderError
+            ? err
+            : new GeminiProviderError(err.message || 'Deep research model call failed', 500, 'RESEARCH_ERROR', false);
+
+        // Immediately stop if credentials are missing/invalid (401/403) or request is invalid (400)
+        // or if the response itself was malformed JSON (when the API call succeeded with 200)
+        if (
+          geminiErr.statusCode === 401 ||
+          geminiErr.statusCode === 403 ||
+          geminiErr.statusCode === 400 ||
+          geminiErr.errorCode === 'MALFORMED_RESEARCH_JSON' ||
+          geminiErr.errorCode === 'EMPTY_CANDIDATES' ||
+          geminiErr.errorCode === 'MALFORMED_CONTENT'
+        ) {
+          throw geminiErr;
+        }
+
+        // For 404 (model unavailable), 429 (rate limit), 408 (timeout), or 5xx (server error),
+        // record the error and smoothly switch to the next available model in the pool
+        lastError = geminiErr;
       }
-
-      return {
-        viralHooks: parsed.viralHooks,
-        obscureFacts: parsed.obscureFacts || [],
-        retentionAngles: parsed.retentionAngles || [],
-        pacingNotes: parsed.pacingNotes || 'Escalate rhythm steadily towards climax.',
-        summary: parsed.summary || topic,
-        provenance: 'ai_generated',
-      };
-    } catch (parseErr: any) {
-      throw new GeminiProviderError(
-        `Failed to parse Gemini deep research JSON output: ${parseErr.message}`,
-        500,
-        'MALFORMED_RESEARCH_JSON',
-        false
-      );
     }
+
+    throw (
+      lastError ||
+      new GeminiProviderError(
+        `All ${candidateModels.length} Deep Research models were unavailable.`,
+        503,
+        'ALL_RESEARCH_MODELS_UNAVAILABLE',
+        true
+      )
+    );
   }
 
   // ============================================================================

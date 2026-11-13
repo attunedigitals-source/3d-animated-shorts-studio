@@ -25,8 +25,8 @@ export const GENERATION_STAGES: GenerationStageInfo[] = [
   {
     id: 'researching',
     name: 'Deep Research & Viral Hooks',
-    model: 'deep-research-max-preview-04-2026',
-    description: 'Analyzing historical facts, retention triggers, and opening hook angles.',
+    model: 'gemini-3.1-flash-lite (8-Model Auto-Switch Pool)',
+    description: 'Analyzing historical facts, retention triggers, and opening hook angles across the 8-model pool.',
   },
   {
     id: 'scripting',
