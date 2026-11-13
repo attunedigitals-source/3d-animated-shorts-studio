@@ -10,25 +10,25 @@ interface SettingsDialogProps {
 
 export const SettingsDialog: React.FC<SettingsDialogProps> = ({ isOpen, onClose }) => {
   const {
-    geminiKey,
-    ai33Key,
+    sessionGeminiKey,
+    sessionAi33Key,
     modelSuite,
-    setGeminiKey,
-    setAi33Key,
+    setSessionGeminiKey,
+    setSessionAi33Key,
     setModelSuite,
   } = usePureStudioStore();
 
   const [activeTab, setActiveTab] = useState<'keys' | 'models'>('keys');
-  const [localGemini, setLocalGemini] = useState(geminiKey);
-  const [localAi33, setLocalAi33] = useState(ai33Key);
+  const [localGemini, setLocalGemini] = useState(sessionGeminiKey);
+  const [localAi33, setLocalAi33] = useState(sessionAi33Key);
   const [localModels, setLocalModels] = useState<GeminiModelSuiteConfig>({ ...modelSuite });
   const [savedNotice, setSavedNotice] = useState(false);
 
   if (!isOpen) return null;
 
   const handleSave = () => {
-    setGeminiKey(localGemini.trim());
-    setAi33Key(localAi33.trim());
+    setSessionGeminiKey(localGemini.trim());
+    setSessionAi33Key(localAi33.trim());
     setModelSuite(localModels);
     setSavedNotice(true);
     setTimeout(() => {
@@ -93,7 +93,7 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({ isOpen, onClose 
               <div className="bg-amber-500/10 border border-amber-500/20 p-3.5 rounded-xl flex items-start gap-2.5 text-xs text-amber-200">
                 <Sparkles className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
                 <span>
-                  Your keys are encrypted in your local browser vault. The studio queries Google Gemini Plus models and ai33.pro neural voice directly.
+                  Session credentials are held in-memory for the active session and transmitted securely via HTTPS headers to the backend pipeline. Keys are never saved to unencrypted browser localStorage.
                 </span>
               </div>
 

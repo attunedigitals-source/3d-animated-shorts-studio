@@ -7,6 +7,69 @@
 import { z } from 'zod';
 
 // ==============================================================================
+// 0. ASSET PROVENANCE & RELIABILITY TYPES (Phase 0 Standards)
+// ==============================================================================
+
+export const AssetProvenanceSchema = z.enum([
+  'ai_generated',
+  'user_uploaded',
+  'preview_placeholder',
+  'demo_asset',
+  'failed',
+  'pending',
+  'needs_review',
+]);
+
+export type AssetProvenance = z.infer<typeof AssetProvenanceSchema>;
+
+export const GeminiModelCapabilitySchema = z.enum([
+  'text_generation',
+  'deep_research',
+  'image_generation',
+  'video_generation',
+  'music_generation',
+  'multimodal_analysis',
+  'audio_transcription',
+]);
+
+export type GeminiModelCapability = z.infer<typeof GeminiModelCapabilitySchema>;
+
+export const GeminiApiSurfaceSchema = z.enum([
+  'generateContent',
+  'predict',
+  'generateImages',
+  'predictAudio',
+  'unavailable',
+]);
+
+export type GeminiApiSurface = z.infer<typeof GeminiApiSurfaceSchema>;
+
+export interface ModelRegistryEntry {
+  id: string;
+  displayName: string;
+  provider: 'Google';
+  apiSurface: GeminiApiSurface;
+  capabilities: GeminiModelCapability[];
+  inputTypes: ('text' | 'image' | 'audio' | 'video')[];
+  outputTypes: ('text' | 'image' | 'audio' | 'video' | 'json')[];
+  isAvailable: boolean;
+  stability: 'STABLE' | 'PREVIEW' | 'DEPRECATED';
+  lastVerified: string;
+  notes?: string;
+}
+
+export interface ProviderErrorInfo {
+  provider: 'gemini' | 'ai33' | 'lyria' | 'system';
+  statusCode?: number;
+  errorCode: string;
+  message: string;
+  isRetryable: boolean;
+  retryAfterSeconds?: number;
+  requestId?: string;
+  timestamp: string;
+}
+
+// ==============================================================================
 // 1. CHARACTER DNA & CANONICAL SHEET (100% Consistency Pillars)
 // ==============================================================================
 
@@ -41,6 +104,8 @@ export const CanonicalCharacterSheetSchema = z.object({
   threeQuarterPoseUrl: z.string().optional(),
   profilePoseUrl: z.string().optional(),
   actionPoseUrl: z.string().optional(),
+  provenance: AssetProvenanceSchema.default('pending'),
+  isProceduralPlaceholder: z.boolean().default(false),
   createdAt: z.string(),
 });
 
@@ -97,6 +162,7 @@ export const WordTimestampSchema = z.object({
   word: z.string(),
   startMs: z.number().nonnegative(),
   endMs: z.number().nonnegative(),
+  isEstimated: z.boolean().optional(),
 });
 
 export type WordTimestamp = z.infer<typeof WordTimestampSchema>;
@@ -106,6 +172,8 @@ export const AudioNarrationSchema = z.object({
   durationSeconds: z.number().positive(),
   timestamps: z.array(WordTimestampSchema),
   voiceModel: z.string().default('ai33-neural-hd'),
+  provenance: AssetProvenanceSchema.default('pending'),
+  isEstimatedAlignment: z.boolean().default(false),
 });
 
 export type AudioNarration = z.infer<typeof AudioNarrationSchema>;
@@ -123,6 +191,8 @@ export const RenderedShotSchema = z.object({
   cameraTrajectory: CameraTrajectorySchema,
   startMs: z.number().nonnegative(),
   endMs: z.number().nonnegative(),
+  provenance: AssetProvenanceSchema.default('pending'),
+  referenceImageUsed: z.string().optional(),
 });
 
 export type RenderedShot = z.infer<typeof RenderedShotSchema>;
@@ -145,6 +215,8 @@ export const SoundtrackScoreSchema = z.object({
   mood: z.string(),
   genre: z.string(),
   duckingMarkers: z.array(DuckingMarkerSchema),
+  provenance: AssetProvenanceSchema.default('pending'),
+  isPlaceholder: z.boolean().default(false),
 });
 
 export type SoundtrackScore = z.infer<typeof SoundtrackScoreSchema>;
@@ -153,12 +225,34 @@ export type SoundtrackScore = z.infer<typeof SoundtrackScoreSchema>;
 // 6. VISUAL QA INSPECTOR REPORT (Gemini Omni 1.2 Flash)
 // ==============================================================================
 
+export const QACategoryScoreSchema = z.object({
+  score: z.number().min(0).max(100),
+  passed: z.boolean(),
+  notes: z.string(),
+});
+
+export type QACategoryScore = z.infer<typeof QACategoryScoreSchema>;
+
+export const QAStatusSchema = z.enum(['passed', 'failed', 'needs_review', 'not_inspected']);
+export type QAStatus = z.infer<typeof QAStatusSchema>;
+
 export const QAAuditReportSchema = z.object({
+  status: QAStatusSchema.default('not_inspected'),
   passed: z.boolean(),
   characterConsistencyScore: z.number().min(0).max(100),
   visualFidelityScore: z.number().min(0).max(100),
   subtitleLegibility: z.boolean(),
   feedback: z.array(z.string()),
+  categories: z.object({
+    characterIdentity: QACategoryScoreSchema.optional(),
+    clothingAndAppearance: QACategoryScoreSchema.optional(),
+    environmentConsistency: QACategoryScoreSchema.optional(),
+    composition: QACategoryScoreSchema.optional(),
+    lighting: QACategoryScoreSchema.optional(),
+    visualDefects: QACategoryScoreSchema.optional(),
+    sceneContinuity: QACategoryScoreSchema.optional(),
+  }).optional(),
+  inspectedAt: z.string().optional(),
 });
 
 export type QAAuditReport = z.infer<typeof QAAuditReportSchema>;
@@ -169,6 +263,18 @@ export type QAAuditReport = z.infer<typeof QAAuditReportSchema>;
 
 export const VideoFormatSchema = z.enum(['9:16', '16:9']);
 export type VideoFormat = z.infer<typeof VideoFormatSchema>;
+
+export const ProjectErrorDetailsSchema = z.object({
+  stage: z.string(),
+  provider: z.enum(['gemini', 'ai33', 'lyria', 'system']),
+  errorCode: z.string(),
+  message: z.string(),
+  isRetryable: z.boolean(),
+  timestamp: z.string(),
+  retryAfterSeconds: z.number().optional(),
+});
+
+export type ProjectErrorDetails = z.infer<typeof ProjectErrorDetailsSchema>;
 
 export const Pure3DStudioProjectSchema = z.object({
   id: z.string(),
@@ -185,6 +291,7 @@ export const Pure3DStudioProjectSchema = z.object({
   soundtrack: SoundtrackScoreSchema.optional(),
   qaReport: QAAuditReportSchema.optional(),
   outputVideoUrl: z.string().optional(),
+  lastError: ProjectErrorDetailsSchema.optional(),
   status: z.enum([
     'idle',
     'researching',

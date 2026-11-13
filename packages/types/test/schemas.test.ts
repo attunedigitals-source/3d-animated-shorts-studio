@@ -5,9 +5,35 @@ import {
   NarrativeBeatSchema,
   AudioNarrationSchema,
   Pure3DStudioProjectSchema,
+  AssetProvenanceSchema,
+  QAStatusSchema,
+  ProjectErrorDetailsSchema,
 } from '../src/index';
 
 describe('Pure AI 3D Studio Schema Validation', () => {
+  it('validates AssetProvenance and QAStatus enums', () => {
+    expect(AssetProvenanceSchema.parse('ai_generated')).toBe('ai_generated');
+    expect(AssetProvenanceSchema.parse('preview_placeholder')).toBe('preview_placeholder');
+    expect(QAStatusSchema.parse('passed')).toBe('passed');
+    expect(QAStatusSchema.parse('needs_review')).toBe('needs_review');
+    expect(QAStatusSchema.parse('not_inspected')).toBe('not_inspected');
+  });
+
+  it('validates ProjectErrorDetails schema', () => {
+    const errorDetails = {
+      stage: 'generating_anchor_sheet',
+      provider: 'gemini' as const,
+      errorCode: 'RATE_LIMIT_EXCEEDED',
+      message: 'Quota exceeded for gemini-3-pro-image',
+      isRetryable: true,
+      timestamp: new Date().toISOString(),
+      retryAfterSeconds: 30,
+    };
+
+    const parsed = ProjectErrorDetailsSchema.parse(errorDetails);
+    expect(parsed.isRetryable).toBe(true);
+    expect(parsed.retryAfterSeconds).toBe(30);
+  });
   it('validates CharacterDNA with Locked Visual Matrix', () => {
     const character = {
       id: 'char_1',

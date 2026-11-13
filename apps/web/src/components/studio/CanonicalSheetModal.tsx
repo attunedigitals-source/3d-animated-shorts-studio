@@ -80,6 +80,53 @@ export const CanonicalSheetModal: React.FC<CanonicalSheetModalProps> = ({
             />
           </div>
 
+          {/* 4 Distinct Character Angles */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="bg-slate-950 p-2 rounded-xl border border-slate-800 flex flex-col items-center gap-1.5">
+              <span className="text-[10px] font-bold text-amber-400 uppercase">1. Front View</span>
+              <div className="w-full aspect-[9/16] max-h-40 bg-black rounded-lg overflow-hidden flex items-center justify-center">
+                {sheet.frontPoseUrl ? (
+                  <img src={sheet.frontPoseUrl} alt="Front View" className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-[10px] text-slate-500">Master Sheet</span>
+                )}
+              </div>
+            </div>
+
+            <div className="bg-slate-950 p-2 rounded-xl border border-slate-800 flex flex-col items-center gap-1.5">
+              <span className="text-[10px] font-bold text-amber-400 uppercase">2. 3/4 Perspective</span>
+              <div className="w-full aspect-[9/16] max-h-40 bg-black rounded-lg overflow-hidden flex items-center justify-center">
+                {sheet.threeQuarterPoseUrl ? (
+                  <img src={sheet.threeQuarterPoseUrl} alt="3/4 Perspective" className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-[10px] text-slate-500">Master Sheet</span>
+                )}
+              </div>
+            </div>
+
+            <div className="bg-slate-950 p-2 rounded-xl border border-slate-800 flex flex-col items-center gap-1.5">
+              <span className="text-[10px] font-bold text-amber-400 uppercase">3. Profile</span>
+              <div className="w-full aspect-[9/16] max-h-40 bg-black rounded-lg overflow-hidden flex items-center justify-center">
+                {sheet.profilePoseUrl ? (
+                  <img src={sheet.profilePoseUrl} alt="Profile" className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-[10px] text-slate-500">Master Sheet</span>
+                )}
+              </div>
+            </div>
+
+            <div className="bg-slate-950 p-2 rounded-xl border border-slate-800 flex flex-col items-center gap-1.5">
+              <span className="text-[10px] font-bold text-amber-400 uppercase">4. Action Pose</span>
+              <div className="w-full aspect-[9/16] max-h-40 bg-black rounded-lg overflow-hidden flex items-center justify-center">
+                {sheet.actionPoseUrl ? (
+                  <img src={sheet.actionPoseUrl} alt="Action Pose" className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-[10px] text-slate-500">Master Sheet</span>
+                )}
+              </div>
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
             <div className="p-3 bg-slate-950/60 rounded-lg border border-slate-800/80">
               <div className="text-slate-400 font-semibold mb-1">Facial Geometry & Skin</div>

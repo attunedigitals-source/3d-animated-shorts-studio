@@ -1,6 +1,9 @@
 /**
- * Pure Gemini 3D Studio API Routes
- * Endpoints for autonomous pipeline and granular steps based on NEXT_GEN_3D_STUDIO_PROPOSAL.md
+ * Pure Gemini 3D Studio API Routes (Phase 0 Repaired)
+ * Endpoints for autonomous pipeline execution and granular stages.
+ * - Secure header-based key ingestion (x-gemini-key, x-ai33-key) falling back to process.env.
+ * - Redacts secrets and API keys from logs and error responses.
+ * - Accurate HTTP status codes (400, 401, 403, 404, 429, 500) and structured error schemas.
  */
 
 import { Router, Request, Response } from 'express';
@@ -8,6 +11,8 @@ import {
   Gemini3DStudioEngine,
   AI33VoiceEngine,
   Pure3DStudioPipelineOrchestrator,
+  GeminiProviderError,
+  VoiceProviderError,
 } from '@studio/gemini-studio-core';
 
 const router = Router();
@@ -16,14 +21,44 @@ const geminiEngine = new Gemini3DStudioEngine();
 const voiceEngine = new AI33VoiceEngine();
 
 /**
+ * Helper to safely extract effective API keys from request headers or environment.
+ * Never stores or logs the keys.
+ */
+function extractKeys(req: Request): { geminiKey?: string; ai33Key?: string } {
+  const headerGemini = req.headers['x-gemini-key'] as string | undefined;
+  const headerAi33 = req.headers['x-ai33-key'] as string | undefined;
+  const bodyGemini = req.body?.geminiKey as string | undefined;
+  const bodyAi33 = req.body?.ai33Key as string | undefined;
+
+  const geminiKey = headerGemini || bodyGemini || process.env.GEMINI_API_KEY || undefined;
+  const ai33Key = headerAi33 || bodyAi33 || process.env.AI33_API_KEY || undefined;
+
+  return {
+    geminiKey: geminiKey && geminiKey.trim().length > 10 ? geminiKey.trim() : undefined,
+    ai33Key: ai33Key && ai33Key.trim().length > 5 ? ai33Key.trim() : undefined,
+  };
+}
+
+/**
+ * Helper to sanitize error messages so API keys are never leaked to client or logs.
+ */
+function sanitizeErrorMessage(msg: string): string {
+  return msg
+    .replace(/key=[a-zA-Z0-9_\-]+/gi, 'key=[REDACTED]')
+    .replace(/AIzaSy[a-zA-Z0-9_\-]+/gi, '[REDACTED_GEMINI_KEY]')
+    .replace(/ai33_[a-zA-Z0-9_\-]+/gi, '[REDACTED_AI33_KEY]');
+}
+
+/**
  * POST /api/pipeline/generate
  * 1-Click autonomous generation of 3D CGI video project
  */
 router.post('/pipeline/generate', async (req: Request, res: Response) => {
   try {
-    const { topic, aspectRatio, targetDurationSeconds, voiceId, geminiKey, ai33Key } = req.body;
+    const { topic, aspectRatio, targetDurationSeconds, voiceId, modelSuite } = req.body;
+    const { geminiKey, ai33Key } = extractKeys(req);
 
-    if (!topic || typeof topic !== 'string') {
+    if (!topic || typeof topic !== 'string' || !topic.trim()) {
       res.status(400).json({
         success: false,
         error: { code: 'INVALID_TOPIC', message: 'Topic is required.' },
@@ -32,12 +67,13 @@ router.post('/pipeline/generate', async (req: Request, res: Response) => {
     }
 
     const project = await orchestrator.runPipeline({
-      topic,
+      topic: topic.trim(),
       aspectRatio: aspectRatio === '16:9' ? '16:9' : '9:16',
       targetDurationSeconds: Number(targetDurationSeconds) || 60,
       voiceId,
       geminiKey,
       ai33Key,
+      modelSuite,
     });
 
     res.json({
@@ -45,10 +81,19 @@ router.post('/pipeline/generate', async (req: Request, res: Response) => {
       data: project,
     });
   } catch (err: any) {
-    console.error('[Pipeline Error]:', err);
-    res.status(500).json({
+    const isGemini = err instanceof GeminiProviderError;
+    const isVoice = err instanceof VoiceProviderError;
+    const statusCode = err.statusCode || (isGemini || isVoice ? err.statusCode : 500) || 500;
+    const safeMsg = sanitizeErrorMessage(err.message || 'Pipeline execution failed.');
+
+    res.status(statusCode).json({
       success: false,
-      error: { code: 'PIPELINE_ERROR', message: err.message || 'Pipeline execution failed.' },
+      error: {
+        code: err.errorCode || 'PIPELINE_ERROR',
+        message: safeMsg,
+        isRetryable: Boolean(err.isRetryable),
+        retryAfterSeconds: err.retryAfterSeconds,
+      },
     });
   }
 });
@@ -59,16 +104,26 @@ router.post('/pipeline/generate', async (req: Request, res: Response) => {
  */
 router.post('/generate/research', async (req: Request, res: Response) => {
   try {
-    const { topic, geminiKey } = req.body;
+    const { topic, modelId } = req.body;
+    const { geminiKey } = extractKeys(req);
+
     if (!topic) {
       res.status(400).json({ success: false, error: { message: 'Topic is required.' } });
       return;
     }
 
-    const research = await geminiEngine.researchTopic(topic, geminiKey);
+    const research = await geminiEngine.researchTopic(topic, geminiKey, modelId);
     res.json({ success: true, data: research });
   } catch (err: any) {
-    res.status(500).json({ success: false, error: { message: err.message } });
+    const status = err.statusCode || 500;
+    res.status(status).json({
+      success: false,
+      error: {
+        code: err.errorCode || 'RESEARCH_FAILED',
+        message: sanitizeErrorMessage(err.message),
+        isRetryable: Boolean(err.isRetryable),
+      },
+    });
   }
 });
 
@@ -78,7 +133,9 @@ router.post('/generate/research', async (req: Request, res: Response) => {
  */
 router.post('/generate/story', async (req: Request, res: Response) => {
   try {
-    const { topic, research, aspectRatio, geminiKey } = req.body;
+    const { topic, research, aspectRatio, modelId } = req.body;
+    const { geminiKey } = extractKeys(req);
+
     if (!topic) {
       res.status(400).json({ success: false, error: { message: 'Topic is required.' } });
       return;
@@ -89,10 +146,19 @@ router.post('/generate/story', async (req: Request, res: Response) => {
       research,
       aspectRatio,
       overrideKey: geminiKey,
+      modelId,
     });
     res.json({ success: true, data: story });
   } catch (err: any) {
-    res.status(500).json({ success: false, error: { message: err.message } });
+    const status = err.statusCode || 500;
+    res.status(status).json({
+      success: false,
+      error: {
+        code: err.errorCode || 'STORY_FAILED',
+        message: sanitizeErrorMessage(err.message),
+        isRetryable: Boolean(err.isRetryable),
+      },
+    });
   }
 });
 
@@ -102,16 +168,26 @@ router.post('/generate/story', async (req: Request, res: Response) => {
  */
 router.post('/generate/character-sheet', async (req: Request, res: Response) => {
   try {
-    const { character, geminiKey } = req.body;
+    const { character, modelId } = req.body;
+    const { geminiKey } = extractKeys(req);
+
     if (!character || !character.visualIdentityMatrix) {
       res.status(400).json({ success: false, error: { message: 'Character with Visual Identity Matrix is required.' } });
       return;
     }
 
-    const sheet = await geminiEngine.generateCanonicalCharacterSheet(character, geminiKey);
+    const sheet = await geminiEngine.generateCanonicalCharacterSheet(character, geminiKey, modelId);
     res.json({ success: true, data: sheet });
   } catch (err: any) {
-    res.status(500).json({ success: false, error: { message: err.message } });
+    const status = err.statusCode || 500;
+    res.status(status).json({
+      success: false,
+      error: {
+        code: err.errorCode || 'SHEET_FAILED',
+        message: sanitizeErrorMessage(err.message),
+        isRetryable: Boolean(err.isRetryable),
+      },
+    });
   }
 });
 
@@ -121,7 +197,9 @@ router.post('/generate/character-sheet', async (req: Request, res: Response) => 
  */
 router.post('/generate/voice', async (req: Request, res: Response) => {
   try {
-    const { scriptText, voiceId, speed, ai33Key } = req.body;
+    const { scriptText, voiceId, speed } = req.body;
+    const { ai33Key } = extractKeys(req);
+
     if (!scriptText) {
       res.status(400).json({ success: false, error: { message: 'Script text is required.' } });
       return;
@@ -134,7 +212,15 @@ router.post('/generate/voice', async (req: Request, res: Response) => {
     });
     res.json({ success: true, data: narration });
   } catch (err: any) {
-    res.status(500).json({ success: false, error: { message: err.message } });
+    const status = err.statusCode || 500;
+    res.status(status).json({
+      success: false,
+      error: {
+        code: err.errorCode || 'VOICE_FAILED',
+        message: sanitizeErrorMessage(err.message),
+        isRetryable: Boolean(err.isRetryable),
+      },
+    });
   }
 });
 
@@ -144,7 +230,9 @@ router.post('/generate/voice', async (req: Request, res: Response) => {
  */
 router.post('/generate/shots', async (req: Request, res: Response) => {
   try {
-    const { beats, character, anchorSheet, aspectRatio, geminiKey } = req.body;
+    const { beats, character, anchorSheet, aspectRatio, modelId } = req.body;
+    const { geminiKey } = extractKeys(req);
+
     if (!beats || !character || !anchorSheet) {
       res.status(400).json({ success: false, error: { message: 'Beats, character, and anchor sheet are required.' } });
       return;
@@ -157,32 +245,52 @@ router.post('/generate/shots', async (req: Request, res: Response) => {
         character,
         anchorSheet,
         aspectRatio || '9:16',
-        geminiKey
+        geminiKey,
+        modelId
       );
       shots.push(shot);
     }
     res.json({ success: true, data: shots });
   } catch (err: any) {
-    res.status(500).json({ success: false, error: { message: err.message } });
+    const status = err.statusCode || 500;
+    res.status(status).json({
+      success: false,
+      error: {
+        code: err.errorCode || 'SHOTS_FAILED',
+        message: sanitizeErrorMessage(err.message),
+        isRetryable: Boolean(err.isRetryable),
+      },
+    });
   }
 });
 
 /**
  * POST /api/generate/music
- * Adaptive Soundtrack via lyria-3.5
+ * Adaptive Soundtrack via Lyria
  */
 router.post('/generate/music', async (req: Request, res: Response) => {
   try {
-    const { mood, durationSeconds, timestamps, geminiKey } = req.body;
+    const { mood, durationSeconds, timestamps, modelId } = req.body;
+    const { geminiKey } = extractKeys(req);
+
     const score = await geminiEngine.composeAdaptiveSoundtrack({
       mood: mood || 'Cinematic tension',
       durationSeconds: Number(durationSeconds) || 60,
       timestamps,
       overrideKey: geminiKey,
+      modelId,
     });
     res.json({ success: true, data: score });
   } catch (err: any) {
-    res.status(500).json({ success: false, error: { message: err.message } });
+    const status = err.statusCode || 500;
+    res.status(status).json({
+      success: false,
+      error: {
+        code: err.errorCode || 'MUSIC_FAILED',
+        message: sanitizeErrorMessage(err.message),
+        isRetryable: Boolean(err.isRetryable),
+      },
+    });
   }
 });
 
@@ -192,7 +300,9 @@ router.post('/generate/music', async (req: Request, res: Response) => {
  */
 router.post('/qa/inspect', async (req: Request, res: Response) => {
   try {
-    const { canonicalSheet, shots, beats, geminiKey } = req.body;
+    const { canonicalSheet, shots, beats, modelId } = req.body;
+    const { geminiKey } = extractKeys(req);
+
     if (!canonicalSheet || !shots) {
       res.status(400).json({ success: false, error: { message: 'Canonical sheet and shots required.' } });
       return;
@@ -203,12 +313,20 @@ router.post('/qa/inspect', async (req: Request, res: Response) => {
       shots,
       beats: beats || [],
       overrideKey: geminiKey,
+      modelId,
     });
     res.json({ success: true, data: report });
   } catch (err: any) {
-    res.status(500).json({ success: false, error: { message: err.message } });
+    const status = err.statusCode || 500;
+    res.status(status).json({
+      success: false,
+      error: {
+        code: err.errorCode || 'QA_FAILED',
+        message: sanitizeErrorMessage(err.message),
+        isRetryable: Boolean(err.isRetryable),
+      },
+    });
   }
 });
 
 export default router;
-

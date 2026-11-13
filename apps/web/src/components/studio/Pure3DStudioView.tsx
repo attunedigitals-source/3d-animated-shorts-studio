@@ -12,6 +12,7 @@ import {
   Settings,
   TrendingUp,
   AlertTriangle,
+  RotateCcw,
 } from 'lucide-react';
 import { usePureStudioStore, GENERATION_STAGES } from '../../stores/usePureStudioStore';
 import { Pure3DTheater } from './Pure3DTheater';
@@ -36,6 +37,7 @@ export const Pure3DStudioView: React.FC = () => {
     currentStage,
     progressPercent,
     errorMessage,
+    isRetryableError,
     project,
     isSettingsOpen,
     isSheetModalOpen,
@@ -45,12 +47,13 @@ export const Pure3DStudioView: React.FC = () => {
     setIsSettingsOpen,
     setIsSheetModalOpen,
     generateProject,
-    loadSavedKeys,
+    retryGeneration,
+    loadSavedPreferences,
   } = usePureStudioStore();
 
   useEffect(() => {
-    loadSavedKeys();
-  }, [loadSavedKeys]);
+    loadSavedPreferences();
+  }, [loadSavedPreferences]);
 
   const activeStageIndex = GENERATION_STAGES.findIndex((s) => s.id === currentStage);
 
@@ -226,9 +229,21 @@ export const Pure3DStudioView: React.FC = () => {
             </div>
 
             {errorMessage && (
-              <div className="bg-rose-500/10 border border-rose-500/30 p-4 rounded-2xl flex items-center gap-3 text-sm text-rose-300">
-                <AlertTriangle className="w-5 h-5 text-rose-400 shrink-0" />
-                <span>{errorMessage}</span>
+              <div className="bg-rose-500/10 border border-rose-500/30 p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-sm text-rose-300">
+                <div className="flex items-center gap-3">
+                  <AlertTriangle className="w-5 h-5 text-rose-400 shrink-0" />
+                  <span className="font-medium">{errorMessage}</span>
+                </div>
+                {isRetryableError && (
+                  <button
+                    type="button"
+                    onClick={retryGeneration}
+                    className="self-start sm:self-auto px-4 py-2 bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/40 rounded-xl text-xs font-bold text-rose-200 transition flex items-center gap-2"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    <span>Retry Pipeline</span>
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -355,9 +370,20 @@ export const Pure3DStudioView: React.FC = () => {
                             Rendering...
                           </div>
                         )}
-                        <span className="absolute top-2 left-2 bg-black/80 backdrop-blur-md px-2 py-0.5 rounded text-[10px] font-bold text-amber-400">
-                          Beat {beat.beatNumber} • {beat.type}
-                        </span>
+                        <div className="absolute top-2 left-2 flex items-center gap-1.5">
+                          <span className="bg-black/80 backdrop-blur-md px-2 py-0.5 rounded text-[10px] font-bold text-amber-400">
+                            Beat {beat.beatNumber} • {beat.type}
+                          </span>
+                          {shot?.provenance === 'ai_generated' ? (
+                            <span className="bg-emerald-950/80 border border-emerald-500/40 text-emerald-300 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider">
+                              AI 3D
+                            </span>
+                          ) : shot?.provenance === 'preview_placeholder' ? (
+                            <span className="bg-amber-950/80 border border-amber-500/40 text-amber-300 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider">
+                              Preview
+                            </span>
+                          ) : null}
+                        </div>
                       </div>
 
                       <div className="p-3.5 flex-1 flex flex-col justify-between space-y-2">

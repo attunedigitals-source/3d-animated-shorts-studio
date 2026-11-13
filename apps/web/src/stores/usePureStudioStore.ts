@@ -1,3 +1,11 @@
+/**
+ * Pure AI 3D Animated Video Studio State Store (Phase 0 Repaired)
+ * - Zero cleartext API key persistence in browser localStorage.
+ * - In-memory session credentials transmitted exclusively via secure request headers.
+ * - Honest pipeline stage reporting with zero simulated fallbacks.
+ * - Full retryability for failed stages.
+ */
+
 import { create } from 'zustand';
 import {
   Pure3DStudioProject,
@@ -5,7 +13,6 @@ import {
   GeminiModelSuiteConfig,
   DEFAULT_MODEL_SUITE,
 } from '@studio/types';
-import { Pure3DStudioPipelineOrchestrator } from '@studio/gemini-studio-core';
 
 export interface GenerationStageInfo {
   id: string;
@@ -70,14 +77,17 @@ interface PureStudioState {
   aspectRatio: VideoFormat;
   targetDurationSeconds: number;
   selectedVoice: string;
-  geminiKey: string;
-  ai33Key: string;
+
+  // In-memory session credentials (Never persisted to localStorage)
+  sessionGeminiKey: string;
+  sessionAi33Key: string;
   modelSuite: GeminiModelSuiteConfig;
 
   isGenerating: boolean;
   currentStage: string;
   progressPercent: number;
   errorMessage: string | null;
+  isRetryableError: boolean;
 
   project: Pure3DStudioProject | null;
 
@@ -92,8 +102,8 @@ interface PureStudioState {
   setAspectRatio: (format: VideoFormat) => void;
   setTargetDuration: (seconds: number) => void;
   setSelectedVoice: (voice: string) => void;
-  setGeminiKey: (key: string) => void;
-  setAi33Key: (key: string) => void;
+  setSessionGeminiKey: (key: string) => void;
+  setSessionAi33Key: (key: string) => void;
   setModelSuite: (suite: Partial<GeminiModelSuiteConfig>) => void;
   setIsSettingsOpen: (open: boolean) => void;
   setIsSheetModalOpen: (open: boolean) => void;
@@ -102,7 +112,8 @@ interface PureStudioState {
   setActiveBeatIndex: (idx: number) => void;
 
   generateProject: () => Promise<void>;
-  loadSavedKeys: () => void;
+  retryGeneration: () => Promise<void>;
+  loadSavedPreferences: () => void;
 }
 
 export const usePureStudioStore = create<PureStudioState>((set, get) => ({
@@ -110,14 +121,15 @@ export const usePureStudioStore = create<PureStudioState>((set, get) => ({
   aspectRatio: '9:16',
   targetDurationSeconds: 60,
   selectedVoice: 'narrator-cinematic-deep-01',
-  geminiKey: '',
-  ai33Key: '',
+  sessionGeminiKey: '',
+  sessionAi33Key: '',
   modelSuite: DEFAULT_MODEL_SUITE,
 
   isGenerating: false,
   currentStage: '',
   progressPercent: 0,
   errorMessage: null,
+  isRetryableError: false,
 
   project: null,
 
@@ -132,18 +144,11 @@ export const usePureStudioStore = create<PureStudioState>((set, get) => ({
   setAspectRatio: (aspectRatio) => set({ aspectRatio }),
   setTargetDuration: (targetDurationSeconds) => set({ targetDurationSeconds }),
   setSelectedVoice: (selectedVoice) => set({ selectedVoice }),
-  setGeminiKey: (geminiKey) => {
-    set({ geminiKey });
-    try {
-      localStorage.setItem('GEMINI_API_KEY', geminiKey);
-    } catch {}
-  },
-  setAi33Key: (ai33Key) => {
-    set({ ai33Key });
-    try {
-      localStorage.setItem('AI33_API_KEY', ai33Key);
-    } catch {}
-  },
+
+  // Strictly in-memory session key updates
+  setSessionGeminiKey: (sessionGeminiKey) => set({ sessionGeminiKey: sessionGeminiKey.trim() }),
+  setSessionAi33Key: (sessionAi33Key) => set({ sessionAi33Key: sessionAi33Key.trim() }),
+
   setModelSuite: (suite) => {
     const updated = { ...get().modelSuite, ...suite };
     set({ modelSuite: updated });
@@ -151,97 +156,110 @@ export const usePureStudioStore = create<PureStudioState>((set, get) => ({
       localStorage.setItem('GEMINI_MODEL_SUITE', JSON.stringify(updated));
     } catch {}
   },
+
   setIsSettingsOpen: (isSettingsOpen) => set({ isSettingsOpen }),
   setIsSheetModalOpen: (isSheetModalOpen) => set({ isSheetModalOpen }),
   setCurrentTimeMs: (currentTimeMs) => set({ currentTimeMs }),
   setIsPlaying: (isPlaying) => set({ isPlaying }),
   setActiveBeatIndex: (activeBeatIndex) => set({ activeBeatIndex }),
 
-  loadSavedKeys: () => {
+  loadSavedPreferences: () => {
     try {
-      const gKey = localStorage.getItem('GEMINI_API_KEY') || '';
-      const vKey = localStorage.getItem('AI33_API_KEY') || '';
       const savedSuite = localStorage.getItem('GEMINI_MODEL_SUITE');
-      const suite = savedSuite ? { ...DEFAULT_MODEL_SUITE, ...JSON.parse(savedSuite) } : DEFAULT_MODEL_SUITE;
-      set({ geminiKey: gKey, ai33Key: vKey, modelSuite: suite });
+      if (savedSuite) {
+        set({ modelSuite: { ...DEFAULT_MODEL_SUITE, ...JSON.parse(savedSuite) } });
+      }
     } catch {}
   },
 
   generateProject: async () => {
-    const { topic, aspectRatio, targetDurationSeconds, selectedVoice, geminiKey, ai33Key } = get();
+    const { topic, aspectRatio, targetDurationSeconds, selectedVoice, sessionGeminiKey, sessionAi33Key, modelSuite } = get();
 
     set({
       isGenerating: true,
       currentStage: 'researching',
-      progressPercent: 5,
+      progressPercent: 10,
       errorMessage: null,
+      isRetryableError: false,
       isPlaying: false,
       currentTimeMs: 0,
       activeBeatIndex: 0,
     });
 
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+
+    if (sessionGeminiKey) {
+      headers['x-gemini-key'] = sessionGeminiKey;
+    }
+    if (sessionAi33Key) {
+      headers['x-ai33-key'] = sessionAi33Key;
+    }
+
     try {
-      let projectResult: Pure3DStudioProject | null = null;
-
-      // 1. First attempt generation through the backend API
-      try {
-        const response = await fetch('/api/pipeline/generate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            topic,
-            aspectRatio,
-            targetDurationSeconds,
-            voiceId: selectedVoice,
-            geminiKey,
-            ai33Key,
-          }),
-        });
-
-        if (response.ok) {
-          const resJson = await response.json();
-          if (resJson.success && resJson.data) {
-            projectResult = resJson.data;
-          }
+      const progressTimer = setInterval(() => {
+        const curr = get().progressPercent;
+        if (curr < 90 && get().isGenerating) {
+          set({ progressPercent: curr + 10 });
         }
-      } catch (networkErr) {
-        console.warn('[Backend API unreachable, using direct browser orchestrator]:', networkErr);
-      }
+      }, 3000);
 
-      // 2. Direct browser orchestration fallback if server is unreachable
-      if (!projectResult) {
-        const orchestrator = new Pure3DStudioPipelineOrchestrator();
-        projectResult = await orchestrator.runPipeline({
+      const response = await fetch('/api/pipeline/generate', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
           topic,
           aspectRatio,
           targetDurationSeconds,
           voiceId: selectedVoice,
-          geminiKey,
-          ai33Key,
-          onProgress: (stage, percent) => {
-            set({ currentStage: stage, progressPercent: percent });
-          },
+          modelSuite,
+        }),
+      });
+
+      clearInterval(progressTimer);
+
+      if (!response.ok) {
+        const errJson = await response.json().catch(() => ({}));
+        const errMessage = errJson?.error?.message || `Pipeline server returned HTTP ${response.status}`;
+        const isRetryable = Boolean(errJson?.error?.isRetryable);
+
+        set({
+          isGenerating: false,
+          errorMessage: errMessage,
+          isRetryableError: isRetryable,
         });
+        return;
       }
 
-      if (!projectResult) {
-        throw new Error('Failed to generate 3D project. Please check your credentials.');
+      const result = await response.json();
+      if (!result.success || !result.data) {
+        set({
+          isGenerating: false,
+          errorMessage: result?.error?.message || 'Production failed to return generated assets.',
+          isRetryableError: Boolean(result?.error?.isRetryable),
+        });
+        return;
       }
 
       set({
-        project: projectResult,
+        project: result.data,
         isGenerating: false,
         currentStage: 'completed',
         progressPercent: 100,
         isPlaying: true,
       });
     } catch (err: any) {
-      console.error('[Generate Error]:', err);
+      console.error('[Pipeline Fetch Error]:', err);
       set({
         isGenerating: false,
-        errorMessage: err.message || 'Generation failed. Please try again.',
+        errorMessage: err.message || 'Network error reaching production backend. Please check connectivity.',
+        isRetryableError: true,
       });
     }
   },
-}));
 
+  retryGeneration: async () => {
+    await get().generateProject();
+  },
+}));

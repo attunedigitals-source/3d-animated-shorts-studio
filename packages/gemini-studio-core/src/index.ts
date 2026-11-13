@@ -4,6 +4,7 @@
  */
 
 export * from './gemini-studio-engine';
+export * from './gemini-model-registry';
 export * from './ai33-voice-engine';
 export * from './pipeline-orchestrator';
 
