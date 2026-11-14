@@ -21,11 +21,14 @@ import {
   WordTimestamp,
   AssetProvenance,
   QAStatus,
+  ModelVerificationStatus,
 } from '@studio/types';
 import {
   assertModelCapable,
   getModelRegistryEntry,
+  isImageOutputCapableModel,
   DEEP_RESEARCH_MODEL_POOL,
+  OFFICIAL_IMAGE_GENERATION_MODEL_IDS,
 } from './gemini-model-registry';
 
 export class GeminiProviderError extends Error {
@@ -575,9 +578,38 @@ Output JSON:
   // ============================================================================
 
   /**
+   * Helper to extract base64 image data and MIME type from either a `:predict` response
+   * (`predictions[0].bytesBase64Encoded`) or a `:generateContent` response (`candidates[0].content.parts[].inlineData`).
+   */
+  private extractImageFromResponse(data: any): { base64: string; mimeType: string } | null {
+    // 1. Check `:predict` format
+    const predictBase64 = data?.predictions?.[0]?.bytesBase64Encoded;
+    const predictMime = data?.predictions?.[0]?.mimeType || 'image/png';
+    if (predictBase64 && typeof predictBase64 === 'string' && predictBase64.length >= 50) {
+      return { base64: predictBase64, mimeType: predictMime };
+    }
+
+    // 2. Check `:generateContent` format (native Gemini image models: Nano Banana / Nano Banana 2 / Lite / Pro)
+    const parts = data?.candidates?.[0]?.content?.parts;
+    if (Array.isArray(parts)) {
+      for (const part of parts) {
+        const inline = part?.inlineData || part?.inline_data;
+        if (inline?.data && typeof inline.data === 'string' && inline.data.length >= 50) {
+          return {
+            base64: inline.data,
+            mimeType: inline.mimeType || inline.mime_type || 'image/png',
+          };
+        }
+      }
+    }
+
+    return null;
+  }
+
+  /**
    * Generates a 3D image using Gemini Nano Banana image APIs.
-   * Truly supports reference-image conditioning: if referenceImageUrl is passed,
-   * its base64 payload is attached to the request.
+   * Supports both `:predict` and native Gemini `:generateContent` (`responseModalities: ["TEXT", "IMAGE"]`),
+   * and truly supports reference-image conditioning.
    */
   async generateImage(
     model: string,
@@ -599,25 +631,25 @@ Output JSON:
     const cleanModel = model.replace(/^models\//, '');
     assertModelCapable(cleanModel, 'image_generation');
 
-    // Extract reference base64 if provided
+    // Extract reference base64 & mimeType if provided
     let referenceBase64: string | null = null;
-    if (referenceImageUrl) {
-      if (referenceImageUrl.startsWith('data:image/')) {
-        const matches = referenceImageUrl.match(/^data:image\/[a-zA-Z]+;base64,(.+)$/);
-        if (matches && matches[1]) {
-          referenceBase64 = matches[1];
-        }
+    let referenceMimeType = 'image/png';
+    if (referenceImageUrl && referenceImageUrl.startsWith('data:image/')) {
+      const matches = referenceImageUrl.match(/^data:(image\/[a-zA-Z0-9+.-]+);base64,(.+)$/);
+      if (matches && matches[1] && matches[2]) {
+        referenceMimeType = matches[1];
+        referenceBase64 = matches[2];
       }
     }
 
-    const url = `${this.baseUrl}/models/${cleanModel}:predict?key=${encodeURIComponent(key)}`;
+    const predictUrl = `${this.baseUrl}/models/${cleanModel}:predict?key=${encodeURIComponent(key)}`;
 
     const instance: any = { prompt };
     if (referenceBase64) {
       instance.image = { bytesBase64Encoded: referenceBase64 };
     }
 
-    const payload = {
+    const predictPayload = {
       instances: [instance],
       parameters: {
         sampleCount: 1,
@@ -629,14 +661,76 @@ Output JSON:
     const timer = setTimeout(() => controller.abort(), this.defaultTimeoutMs);
 
     try {
-      const resp = await fetch(url, {
+      const resp = await fetch(predictUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(predictPayload),
         signal: controller.signal,
       });
 
       clearTimeout(timer);
+
+      // If `:predict` returns 404 or 400 on a native `gemini-*` image model, fall back to `:generateContent`
+      // with `responseModalities: ["TEXT", "IMAGE"]`, which is the standard Gemini API endpoint for Nano Banana models.
+      if (!resp.ok && (resp.status === 404 || resp.status === 400) && cleanModel.startsWith('gemini-')) {
+        const errJson = await resp.json().catch(() => ({}));
+        const firstErrMsg = errJson?.error?.message || `HTTP ${resp.status}`;
+
+        const generateContentUrl = `${this.baseUrl}/models/${cleanModel}:generateContent?key=${encodeURIComponent(key)}`;
+        const parts: any[] = [{ text: `${prompt} (Aspect ratio: ${aspectRatio === '16:9' ? '16:9' : '9:16'})` }];
+        if (referenceBase64) {
+          parts.push({
+            inlineData: {
+              mimeType: referenceMimeType,
+              data: referenceBase64,
+            },
+          });
+        }
+
+        const gcController = new AbortController();
+        const gcTimer = setTimeout(() => gcController.abort(), this.defaultTimeoutMs);
+
+        try {
+          const gcResp = await fetch(generateContentUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{ role: 'user', parts }],
+              generationConfig: {
+                responseModalities: ['TEXT', 'IMAGE'],
+              },
+            }),
+            signal: gcController.signal,
+          });
+          clearTimeout(gcTimer);
+
+          if (!gcResp.ok) {
+            const gcStatus = gcResp.status;
+            const gcErrJson = await gcResp.json().catch(() => ({}));
+            const gcMsg = gcErrJson?.error?.message || firstErrMsg;
+            throw new GeminiProviderError(
+              `Gemini image generation failed on ${cleanModel} (${gcStatus}): ${gcMsg}`,
+              gcStatus,
+              gcStatus === 401 ? 'AUTHENTICATION_FAILED' : gcStatus === 429 ? 'RATE_LIMIT_EXCEEDED' : 'IMAGE_GENERATION_FAILED',
+              gcStatus === 429 || gcStatus >= 500
+            );
+          }
+
+          const gcData = await gcResp.json();
+          const extracted = this.extractImageFromResponse(gcData);
+          if (!extracted) {
+            throw new GeminiProviderError(
+              `Gemini model ${cleanModel} returned empty or invalid image data from generateContent.`,
+              500,
+              'INVALID_IMAGE_PAYLOAD',
+              false
+            );
+          }
+          return `data:${extracted.mimeType};base64,${extracted.base64}`;
+        } finally {
+          clearTimeout(gcTimer);
+        }
+      }
 
       if (!resp.ok) {
         const status = resp.status;
@@ -652,9 +746,9 @@ Output JSON:
       }
 
       const data = await resp.json();
-      const base64 = data?.predictions?.[0]?.bytesBase64Encoded;
+      const extracted = this.extractImageFromResponse(data);
 
-      if (!base64 || typeof base64 !== 'string' || base64.length < 50) {
+      if (!extracted) {
         throw new GeminiProviderError(
           `Gemini model ${cleanModel} returned empty or invalid image predictions.`,
           500,
@@ -663,7 +757,7 @@ Output JSON:
         );
       }
 
-      return `data:image/png;base64,${base64}`;
+      return `data:${extracted.mimeType};base64,${extracted.base64}`;
     } catch (err: any) {
       clearTimeout(timer);
       if (err instanceof GeminiProviderError) throw err;
@@ -676,6 +770,233 @@ Output JSON:
         true
       );
     }
+  }
+
+  /**
+   * Verifies a model using Google's official Model Discovery API (`GET /v1beta/models/{modelId}`)
+   * and optionally performs a live image generation test.
+   *
+   * Strictly distinguishes between:
+   * - Officially documented model (`isOfficiallyDocumented`)
+   * - Available to the configured API key (`isAvailableToApiKey`)
+   * - Supported by our application for image output (`isSupportedByApp`)
+   * - Successfully tested with an actual image generation request (`isTestedForImageGeneration`)
+   */
+  async verifyImageGenerationModel(
+    modelId: string,
+    overrideKey?: string,
+    testGeneration: boolean = false
+  ): Promise<ModelVerificationStatus> {
+    const cleanModel = modelId.replace(/^models\//, '');
+    const registryEntry = getModelRegistryEntry(cleanModel);
+    const isOfficiallyDocumented =
+      OFFICIAL_IMAGE_GENERATION_MODEL_IDS.includes(cleanModel) || Boolean(registryEntry);
+    const displayName = registryEntry?.displayName || cleanModel;
+
+    // Check whether this model supports image generation OUTPUT (do not classify image-input text models as image-output)
+    const isSupportedByApp = isImageOutputCapableModel(cleanModel);
+    if (!isSupportedByApp) {
+      return {
+        modelId: cleanModel,
+        displayName,
+        isOfficiallyDocumented,
+        isAvailableToApiKey: false,
+        isSupportedByApp: false,
+        isTestedForImageGeneration: false,
+        status: 'unsupported_for_image_output',
+        errorMessage: `Model "${cleanModel}" does not support image generation output (text/multimodal-input models cannot be classified as image-generation models).`,
+      };
+    }
+
+    const key = this.getEffectiveKey(overrideKey);
+    if (!key) {
+      return {
+        modelId: cleanModel,
+        displayName,
+        isOfficiallyDocumented,
+        isAvailableToApiKey: false,
+        isSupportedByApp: true,
+        isTestedForImageGeneration: false,
+        status: 'permission_denied',
+        httpStatusCode: 401,
+        errorMessage: 'Gemini API key is missing. Configure a valid Gemini API key to verify model availability.',
+      };
+    }
+
+    const discoveryUrl = `${this.baseUrl}/models/${cleanModel}?key=${encodeURIComponent(key)}`;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 15000);
+
+    try {
+      const resp = await fetch(discoveryUrl, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+        signal: controller.signal,
+      });
+      clearTimeout(timer);
+
+      if (!resp.ok) {
+        const status = resp.status;
+        const errJson = await resp.json().catch(() => ({}));
+        const rawMsg = errJson?.error?.message || `Google Models API returned HTTP ${status}`;
+        const safeMsg = rawMsg
+          .replace(/key=[a-zA-Z0-9_\-]+/gi, 'key=[REDACTED]')
+          .replace(/AIzaSy[a-zA-Z0-9_\-]+/gi, '[REDACTED_GEMINI_KEY]');
+
+        if (status === 401 || status === 403) {
+          return {
+            modelId: cleanModel,
+            displayName,
+            isOfficiallyDocumented,
+            isAvailableToApiKey: false,
+            isSupportedByApp: true,
+            isTestedForImageGeneration: false,
+            status: 'permission_denied',
+            httpStatusCode: status,
+            errorMessage: safeMsg,
+          };
+        }
+
+        if (status === 404) {
+          return {
+            modelId: cleanModel,
+            displayName,
+            isOfficiallyDocumented,
+            isAvailableToApiKey: false,
+            isSupportedByApp: true,
+            isTestedForImageGeneration: false,
+            status: 'not_available_to_key',
+            httpStatusCode: 404,
+            errorMessage: safeMsg,
+          };
+        }
+
+        return {
+          modelId: cleanModel,
+          displayName,
+          isOfficiallyDocumented,
+          isAvailableToApiKey: false,
+          isSupportedByApp: true,
+          isTestedForImageGeneration: false,
+          status: 'service_error',
+          httpStatusCode: status,
+          errorMessage: safeMsg,
+        };
+      }
+
+      const modelMeta = await resp.json();
+      const supportedMethods: string[] = Array.isArray(modelMeta?.supportedGenerationMethods)
+        ? modelMeta.supportedGenerationMethods
+        : [];
+
+      // Confirm via returned metadata that the model is supported for image output
+      const verifiedImageCapable = isImageOutputCapableModel(cleanModel, {
+        supportedGenerationMethods: supportedMethods,
+        description: modelMeta?.description,
+        displayName: modelMeta?.displayName,
+      });
+
+      if (!verifiedImageCapable) {
+        return {
+          modelId: cleanModel,
+          displayName: modelMeta?.displayName || displayName,
+          isOfficiallyDocumented,
+          isAvailableToApiKey: true,
+          isSupportedByApp: false,
+          isTestedForImageGeneration: false,
+          supportedGenerationMethods: supportedMethods,
+          status: 'unsupported_for_image_output',
+          httpStatusCode: 200,
+          errorMessage: `Model "${cleanModel}" is available to the API key but does not support image generation output.`,
+        };
+      }
+
+      // Never mark `isTestedForImageGeneration: true` based solely on appearance in Google's model list.
+      if (!testGeneration) {
+        return {
+          modelId: cleanModel,
+          displayName,
+          isOfficiallyDocumented,
+          isAvailableToApiKey: true,
+          isSupportedByApp: true,
+          isTestedForImageGeneration: false,
+          supportedGenerationMethods: supportedMethods,
+          status: 'available_untested',
+          httpStatusCode: 200,
+        };
+      }
+
+      // Perform actual image generation test
+      try {
+        const dataUri = await this.generateImage(
+          cleanModel,
+          'Minimal 3D geometric sphere on a clean studio background, soft lighting',
+          key,
+          undefined,
+          '9:16'
+        );
+        const isValidImage = typeof dataUri === 'string' && dataUri.startsWith('data:image/') && dataUri.length > 80;
+        return {
+          modelId: cleanModel,
+          displayName,
+          isOfficiallyDocumented,
+          isAvailableToApiKey: true,
+          isSupportedByApp: true,
+          isTestedForImageGeneration: isValidImage,
+          supportedGenerationMethods: supportedMethods,
+          status: isValidImage ? 'verified_and_tested' : 'service_error',
+          httpStatusCode: 200,
+          errorMessage: isValidImage ? undefined : 'Image generation returned an invalid payload.',
+        };
+      } catch (genErr: any) {
+        const safeGenMsg = (genErr?.message || 'Image generation test failed')
+          .replace(/key=[a-zA-Z0-9_\-]+/gi, 'key=[REDACTED]')
+          .replace(/AIzaSy[a-zA-Z0-9_\-]+/gi, '[REDACTED_GEMINI_KEY]');
+        return {
+          modelId: cleanModel,
+          displayName,
+          isOfficiallyDocumented,
+          isAvailableToApiKey: true,
+          isSupportedByApp: true,
+          isTestedForImageGeneration: false,
+          supportedGenerationMethods: supportedMethods,
+          status: genErr?.statusCode === 401 || genErr?.statusCode === 403 ? 'permission_denied' : 'service_error',
+          httpStatusCode: genErr?.statusCode || 500,
+          errorMessage: safeGenMsg,
+        };
+      }
+    } catch (err: any) {
+      clearTimeout(timer);
+      const safeErr = (err?.message || 'Network error contacting Google Models API')
+        .replace(/key=[a-zA-Z0-9_\-]+/gi, 'key=[REDACTED]')
+        .replace(/AIzaSy[a-zA-Z0-9_\-]+/gi, '[REDACTED_GEMINI_KEY]');
+      return {
+        modelId: cleanModel,
+        displayName,
+        isOfficiallyDocumented,
+        isAvailableToApiKey: false,
+        isSupportedByApp: true,
+        isTestedForImageGeneration: false,
+        status: 'service_error',
+        httpStatusCode: 503,
+        errorMessage: safeErr,
+      };
+    }
+  }
+
+  /**
+   * Verifies all 4 official Google Gemini Image Generation models (`OFFICIAL_IMAGE_GENERATION_MODEL_IDS`).
+   */
+  async verifyAllImageGenerationModels(
+    overrideKey?: string,
+    testGeneration: boolean = false
+  ): Promise<ModelVerificationStatus[]> {
+    const results: ModelVerificationStatus[] = [];
+    for (const modelId of OFFICIAL_IMAGE_GENERATION_MODEL_IDS) {
+      const status = await this.verifyImageGenerationModel(modelId, overrideKey, testGeneration);
+      results.push(status);
+    }
+    return results;
   }
 
   /**

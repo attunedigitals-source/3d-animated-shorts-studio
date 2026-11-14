@@ -58,6 +58,27 @@ export interface ModelRegistryEntry {
   notes?: string;
 }
 
+export interface ModelVerificationStatus {
+  modelId: string;
+  displayName: string;
+  isOfficiallyDocumented: boolean;
+  isAvailableToApiKey: boolean | 'unverified';
+  isSupportedByApp: boolean;
+  isTestedForImageGeneration: boolean;
+  supportedGenerationMethods?: string[];
+  status:
+    | 'verified_and_tested'
+    | 'available_untested'
+    | 'documented_unverified'
+    | 'permission_denied'
+    | 'not_available_to_key'
+    | 'unsupported_for_image_output'
+    | 'service_error';
+  httpStatusCode?: number;
+  errorMessage?: string;
+  verifiedAt?: string;
+}
+
 export interface ProviderErrorInfo {
   provider: 'gemini' | 'ai33' | 'lyria' | 'system';
   statusCode?: number;
@@ -355,6 +376,13 @@ export const DEEP_RESEARCH_MODELS: GeminiModelEntry[] = [
   { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', category: 'STABLE' },
 ];
 
+export const OFFICIAL_IMAGE_GENERATION_MODELS: GeminiModelEntry[] = [
+  { id: 'gemini-3.1-flash-image', name: 'Nano Banana 2', category: 'STABLE' },
+  { id: 'gemini-3.1-flash-lite-image', name: 'Nano Banana 2 Lite', category: 'STABLE' },
+  { id: 'gemini-3-pro-image', name: 'Nano Banana Pro', category: 'STABLE', defaultFor: 'image_generator' },
+  { id: 'gemini-2.5-flash-image', name: 'Nano Banana', category: 'STABLE' },
+];
+
 export const AVAILABLE_GEMINI_MODELS: GeminiModelEntry[] = [
   // STABLE
   { id: 'gemini-3.1-flash-lite', name: 'Gemini 3.1 Flash Lite', category: 'STABLE', defaultFor: 'researcher' },
@@ -371,9 +399,9 @@ export const AVAILABLE_GEMINI_MODELS: GeminiModelEntry[] = [
   { id: 'gemini-flash-lite-latest', name: 'Gemini Flash-Lite Latest', category: 'STABLE' },
   { id: 'gemini-omni-1.1-flash', name: 'Gemini Omni 1.1 Flash', category: 'STABLE' },
   { id: 'gemini-omni-1.2-flash', name: 'Gemini Omni 1.2 Flash', category: 'STABLE', defaultFor: 'qa' },
-  { id: 'gemini-2.5-flash-image', name: 'Nano Banana (gemini-2.5-flash-image)', category: 'STABLE' },
-  { id: 'gemini-3.1-flash-image', name: 'Nano Banana 2 (gemini-3.1-flash-image)', category: 'STABLE' },
-  { id: 'gemini-3.1-flash-lite-image', name: 'Nano Banana 2 Lite (gemini-3.1-flash-lite-image)', category: 'STABLE' },
+  { id: 'gemini-2.5-flash-image', name: 'Nano Banana', category: 'STABLE' },
+  { id: 'gemini-3.1-flash-image', name: 'Nano Banana 2', category: 'STABLE' },
+  { id: 'gemini-3.1-flash-lite-image', name: 'Nano Banana 2 Lite', category: 'STABLE' },
   { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', category: 'STABLE', defaultFor: 'screenwriter' },
   { id: 'gemini-3.5-transcribe', name: 'Gemini 3.5 Transcribe', category: 'STABLE' },
   { id: 'gemini-4-argon', name: 'Gemini 4 Argon', category: 'STABLE', defaultFor: 'continuity' },
@@ -383,7 +411,7 @@ export const AVAILABLE_GEMINI_MODELS: GeminiModelEntry[] = [
   { id: 'gemma-4-31b-it', name: 'Gemma 4 31B IT', category: 'STABLE' },
   { id: 'lyria-3.5', name: 'Lyria 3.5', category: 'STABLE', defaultFor: 'music' },
   { id: 'gemini-nano-banana-2.1', name: 'Nano Banana 2.1', category: 'STABLE' },
-  { id: 'gemini-3-pro-image', name: 'Nano Banana Pro (gemini-3-pro-image)', category: 'STABLE', defaultFor: 'image_generator' },
+  { id: 'gemini-3-pro-image', name: 'Nano Banana Pro', category: 'STABLE', defaultFor: 'image_generator' },
   // PREVIEW
   { id: 'gemini-3-flash-preview', name: 'Gemini 3 Flash Preview', category: 'PREVIEW' },
   { id: 'gemini-3.1-flash-lite-preview', name: 'Gemini 3.1 Flash Lite Preview', category: 'PREVIEW' },

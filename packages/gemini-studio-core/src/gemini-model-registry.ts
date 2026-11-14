@@ -23,6 +23,20 @@ export const DEEP_RESEARCH_MODEL_POOL: readonly string[] = [
   'gemini-2.5-flash',
 ];
 
+/**
+ * Official Google Gemini Image Generation Models (Nano Banana family).
+ * Documented at:
+ * - https://ai.google.dev/gemini-api/docs/models
+ * - https://ai.google.dev/gemini-api/docs/image-generation
+ * - https://ai.google.dev/gemini-api/docs/models/gemini-3.1-flash-lite-image
+ */
+export const OFFICIAL_IMAGE_GENERATION_MODEL_IDS: readonly string[] = [
+  'gemini-3.1-flash-image',
+  'gemini-3.1-flash-lite-image',
+  'gemini-3-pro-image',
+  'gemini-2.5-flash-image',
+];
+
 export const GEMINI_MODEL_REGISTRY: Record<string, ModelRegistryEntry> = {
   // 1. DEEP RESEARCH PRIORITY POOL & SPECIALIZED RESEARCH MODELS
   'gemini-3.1-flash-lite': {
@@ -271,23 +285,10 @@ export const GEMINI_MODEL_REGISTRY: Record<string, ModelRegistryEntry> = {
     notes: 'Cinematographer & scene director: camera trajectories, focal lengths, and lighting cues.',
   },
 
-  // 4. IMAGE GENERATION & CONDITIONING (Nano Banana)
-  'gemini-3-pro-image': {
-    id: 'gemini-3-pro-image',
-    displayName: 'Nano Banana Pro (gemini-3-pro-image)',
-    provider: 'Google',
-    apiSurface: 'predict',
-    capabilities: ['image_generation'],
-    inputTypes: ['text', 'image'],
-    outputTypes: ['image'],
-    isAvailable: true,
-    stability: 'STABLE',
-    lastVerified: '2026-11-12T21:00:00Z',
-    notes: 'High-end 3D CGI character sheet & reference-conditioned scene keyframe generation.',
-  },
+  // 4. IMAGE GENERATION & CONDITIONING (Nano Banana Official Catalogue)
   'gemini-3.1-flash-image': {
     id: 'gemini-3.1-flash-image',
-    displayName: 'Nano Banana 2 (gemini-3.1-flash-image)',
+    displayName: 'Nano Banana 2',
     provider: 'Google',
     apiSurface: 'predict',
     capabilities: ['image_generation'],
@@ -295,20 +296,96 @@ export const GEMINI_MODEL_REGISTRY: Record<string, ModelRegistryEntry> = {
     outputTypes: ['image'],
     isAvailable: true,
     stability: 'STABLE',
-    lastVerified: '2026-11-12T21:00:00Z',
-    notes: 'Rapid variations and secondary keyframes.',
+    lastVerified: '2026-11-14T10:00:00Z',
+    notes: 'Nano Banana 2: High-speed native Gemini 3.1 Flash image generation and reference conditioning.',
+  },
+  'gemini-3.1-flash-lite-image': {
+    id: 'gemini-3.1-flash-lite-image',
+    displayName: 'Nano Banana 2 Lite',
+    provider: 'Google',
+    apiSurface: 'predict',
+    capabilities: ['image_generation'],
+    inputTypes: ['text', 'image'],
+    outputTypes: ['image'],
+    isAvailable: true,
+    stability: 'STABLE',
+    lastVerified: '2026-11-14T10:00:00Z',
+    notes: 'Nano Banana 2 Lite: Low-latency, cost-efficient native Gemini 3.1 Flash Lite image generation and conditioning.',
+  },
+  'gemini-3-pro-image': {
+    id: 'gemini-3-pro-image',
+    displayName: 'Nano Banana Pro',
+    provider: 'Google',
+    apiSurface: 'predict',
+    capabilities: ['image_generation'],
+    inputTypes: ['text', 'image'],
+    outputTypes: ['image'],
+    isAvailable: true,
+    stability: 'STABLE',
+    lastVerified: '2026-11-14T10:00:00Z',
+    notes: 'Nano Banana Pro: High-end 3D CGI character sheet & reference-conditioned scene keyframe generation.',
   },
   'gemini-2.5-flash-image': {
     id: 'gemini-2.5-flash-image',
-    displayName: 'Nano Banana (gemini-2.5-flash-image)',
+    displayName: 'Nano Banana',
     provider: 'Google',
     apiSurface: 'predict',
     capabilities: ['image_generation'],
-    inputTypes: ['text'],
+    inputTypes: ['text', 'image'],
     outputTypes: ['image'],
     isAvailable: true,
     stability: 'STABLE',
-    lastVerified: '2026-11-12T21:00:00Z',
+    lastVerified: '2026-11-14T10:00:00Z',
+    notes: 'Nano Banana: Foundational Gemini 2.5 Flash native image generation and editing.',
+  },
+  // Documented preview aliases for Gemini image models
+  'gemini-3.1-flash-image-preview': {
+    id: 'gemini-3.1-flash-image-preview',
+    displayName: 'Nano Banana 2 Preview',
+    provider: 'Google',
+    apiSurface: 'predict',
+    capabilities: ['image_generation'],
+    inputTypes: ['text', 'image'],
+    outputTypes: ['image'],
+    isAvailable: true,
+    stability: 'PREVIEW',
+    lastVerified: '2026-11-14T10:00:00Z',
+  },
+  'gemini-3.1-flash-lite-image-preview': {
+    id: 'gemini-3.1-flash-lite-image-preview',
+    displayName: 'Nano Banana 2 Lite Preview',
+    provider: 'Google',
+    apiSurface: 'predict',
+    capabilities: ['image_generation'],
+    inputTypes: ['text', 'image'],
+    outputTypes: ['image'],
+    isAvailable: true,
+    stability: 'PREVIEW',
+    lastVerified: '2026-11-14T10:00:00Z',
+  },
+  'gemini-3-pro-image-preview': {
+    id: 'gemini-3-pro-image-preview',
+    displayName: 'Nano Banana Pro Preview',
+    provider: 'Google',
+    apiSurface: 'predict',
+    capabilities: ['image_generation'],
+    inputTypes: ['text', 'image'],
+    outputTypes: ['image'],
+    isAvailable: true,
+    stability: 'PREVIEW',
+    lastVerified: '2026-11-14T10:00:00Z',
+  },
+  'gemini-2.5-flash-image-preview': {
+    id: 'gemini-2.5-flash-image-preview',
+    displayName: 'Nano Banana Preview',
+    provider: 'Google',
+    apiSurface: 'predict',
+    capabilities: ['image_generation'],
+    inputTypes: ['text', 'image'],
+    outputTypes: ['image'],
+    isAvailable: true,
+    stability: 'PREVIEW',
+    lastVerified: '2026-11-14T10:00:00Z',
   },
 
   // 5. MULTIMODAL VISUAL QA INSPECTION
@@ -381,11 +458,86 @@ export const GEMINI_MODEL_REGISTRY: Record<string, ModelRegistryEntry> = {
 };
 
 /**
+ * Strict check for whether a model supports image generation OUTPUT (not merely multimodal image INPUT).
+ * Do NOT automatically classify every model supporting image input as supporting image output.
+ */
+export function isImageOutputCapableModel(
+  modelId: string,
+  apiMetadata?: { supportedGenerationMethods?: string[]; description?: string; displayName?: string }
+): boolean {
+  const cleanId = modelId.replace(/^models\//, '');
+  const staticEntry = GEMINI_MODEL_REGISTRY[cleanId];
+  if (staticEntry) {
+    return staticEntry.capabilities.includes('image_generation') && staticEntry.outputTypes.includes('image');
+  }
+
+  // Official Google Gemini image-output model naming patterns (e.g. gemini-3.1-flash-lite-image, imagen-3.0-generate-002)
+  const isOfficialImageModelId =
+    /^gemini-[0-9]+(?:\.[0-9]+)?-(?:pro|flash(?:-lite)?)-image(?:-preview(?:-[0-9-]+)?)?$/i.test(cleanId) ||
+    /^imagen-[0-9]+(?:\.[0-9]+)?-(?:fast-)?generate-[0-9a-z-]+$/i.test(cleanId) ||
+    /^nano-banana-[0-9a-z.-]+$/i.test(cleanId);
+
+  if (isOfficialImageModelId) {
+    return true;
+  }
+
+  // If Google Models API metadata is provided, check whether it explicitly exposes `:predict` image generation
+  // or explicitly describes native image generation output (Nano Banana / image output).
+  // Note: `generateContent` alone does NOT imply image output because text models also use `generateContent` with image input.
+  if (apiMetadata?.supportedGenerationMethods?.includes('predict') && /image|imagen|banana/i.test(cleanId)) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
  * Retrieve a model entry from the registry by its model ID.
+ * Does not reject officially documented Google Gemini models merely because they were added after
+ * the static catalogue snapshot, while strictly distinguishing image-output models from text/image-input models.
  */
 export function getModelRegistryEntry(modelId: string): ModelRegistryEntry | undefined {
   const cleanId = modelId.replace(/^models\//, '');
-  return GEMINI_MODEL_REGISTRY[cleanId];
+  const existing = GEMINI_MODEL_REGISTRY[cleanId];
+  if (existing) {
+    return existing;
+  }
+
+  // Dynamically recognize officially documented Gemini image-generation model variants
+  if (isImageOutputCapableModel(cleanId)) {
+    return {
+      id: cleanId,
+      displayName: cleanId,
+      provider: 'Google',
+      apiSurface: 'predict',
+      capabilities: ['image_generation'],
+      inputTypes: ['text', 'image'],
+      outputTypes: ['image'],
+      isAvailable: true,
+      stability: cleanId.includes('preview') ? 'PREVIEW' : 'STABLE',
+      lastVerified: new Date().toISOString(),
+      notes: 'Dynamically recognized official Google Gemini image-generation model.',
+    };
+  }
+
+  // Dynamically recognize officially documented Gemini text/multimodal-input model variants (NOT image output)
+  if (/^gemini-[0-9]+(?:\.[0-9]+)?-(?:pro|flash(?:-lite)?|ultra)(?:-(?:preview|exp|latest|[0-9]{2}-[0-9]{2}))?$/i.test(cleanId)) {
+    return {
+      id: cleanId,
+      displayName: cleanId,
+      provider: 'Google',
+      apiSurface: 'generateContent',
+      capabilities: ['text_generation', 'multimodal_analysis'],
+      inputTypes: ['text', 'image'],
+      outputTypes: ['text', 'json'],
+      isAvailable: true,
+      stability: cleanId.includes('preview') || cleanId.includes('exp') ? 'PREVIEW' : 'STABLE',
+      lastVerified: new Date().toISOString(),
+      notes: 'Dynamically recognized official Google Gemini text/multimodal model (image input only, not image output).',
+    };
+  }
+
+  return undefined;
 }
 
 /**
@@ -393,8 +545,7 @@ export function getModelRegistryEntry(modelId: string): ModelRegistryEntry | und
  * Throws a typed descriptive error if incompatible.
  */
 export function assertModelCapable(modelId: string, requiredCapability: GeminiModelCapability): ModelRegistryEntry {
-  const cleanId = modelId.replace(/^models\//, '');
-  const entry = GEMINI_MODEL_REGISTRY[cleanId];
+  const entry = getModelRegistryEntry(modelId);
 
   if (!entry) {
     throw new Error(`[Model Registry Error]: Model "${modelId}" is not recognized in the verified Google Gemini catalogue.`);

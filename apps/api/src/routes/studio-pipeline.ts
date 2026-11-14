@@ -363,4 +363,42 @@ router.post('/qa/inspect', async (req: Request, res: Response) => {
   }
 });
 
+/**
+ * POST /api/models/verify-image
+ * Verifies official Gemini image-generation models against Google's Model Discovery API
+ * (`GET /v1beta/models/{modelId}`) using the user's configured Gemini API key, and optionally
+ * executes a live image-generation test when `testGeneration: true` is passed.
+ */
+router.post('/models/verify-image', async (req: Request, res: Response) => {
+  try {
+    const { modelId, testGeneration } = req.body || {};
+    const { geminiKey } = extractKeys(req);
+
+    if (modelId && typeof modelId === 'string') {
+      const status = await geminiEngine.verifyImageGenerationModel(
+        modelId.trim(),
+        geminiKey,
+        Boolean(testGeneration)
+      );
+      res.json({ success: true, data: [status] });
+      return;
+    }
+
+    const statuses = await geminiEngine.verifyAllImageGenerationModels(
+      geminiKey,
+      Boolean(testGeneration)
+    );
+    res.json({ success: true, data: statuses });
+  } catch (err: any) {
+    const status = err.statusCode || 500;
+    res.status(status).json({
+      success: false,
+      error: {
+        code: err.errorCode || 'MODEL_VERIFICATION_FAILED',
+        message: sanitizeErrorMessage(err.message || 'Image model verification failed.'),
+      },
+    });
+  }
+});
+
 export default router;

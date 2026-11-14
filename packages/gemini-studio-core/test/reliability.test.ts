@@ -16,7 +16,9 @@ import {
 import {
   assertModelCapable,
   getModelRegistryEntry,
+  isImageOutputCapableModel,
   DEEP_RESEARCH_MODEL_POOL,
+  OFFICIAL_IMAGE_GENERATION_MODEL_IDS,
 } from '../src/gemini-model-registry';
 import { CharacterDNA, NarrativeBeat, CanonicalCharacterSheet, RenderedShot } from '@studio/types';
 
@@ -377,5 +379,174 @@ describe('Phase 0: Engine Reliability & Security Test Suite', () => {
     ]);
     expect(result.modelUsed).toBe('gemini-4-hydrogen');
     expect(result.viralHooks[0]).toBe('Hook from Gemini 4 Hydrogen');
+  });
+
+  // 16. Official Image Generation Model Catalogue Recognition (including gemini-3.1-flash-lite-image / Nano Banana 2 Lite)
+  it('recognizes all 4 official Gemini image-generation models and their exact display names', () => {
+    expect(OFFICIAL_IMAGE_GENERATION_MODEL_IDS).toEqual([
+      'gemini-3.1-flash-image',
+      'gemini-3.1-flash-lite-image',
+      'gemini-3-pro-image',
+      'gemini-2.5-flash-image',
+    ]);
+
+    const expectedDisplayNames: Record<string, string> = {
+      'gemini-3.1-flash-image': 'Nano Banana 2',
+      'gemini-3.1-flash-lite-image': 'Nano Banana 2 Lite',
+      'gemini-3-pro-image': 'Nano Banana Pro',
+      'gemini-2.5-flash-image': 'Nano Banana',
+    };
+
+    for (const [modelId, expectedName] of Object.entries(expectedDisplayNames)) {
+      const entry = assertModelCapable(modelId, 'image_generation');
+      expect(entry.id).toBe(modelId);
+      expect(entry.displayName).toBe(expectedName);
+      expect(entry.isAvailable).toBe(true);
+      expect(entry.capabilities).toContain('image_generation');
+      expect(entry.outputTypes).toContain('image');
+      expect(isImageOutputCapableModel(modelId)).toBe(true);
+    }
+
+    // Do not classify multimodal image-INPUT text models as image-OUTPUT models
+    expect(isImageOutputCapableModel('gemini-2.5-pro')).toBe(false);
+    expect(isImageOutputCapableModel('gemini-3.1-flash-lite')).toBe(false);
+    expect(isImageOutputCapableModel('gemini-3.6-flash')).toBe(false);
+  });
+
+  // 17. Image Generation across all 4 official image models (including :generateContent fallback with inlineData)
+  it('generates images with gemini-3.1-flash-lite-image across both :predict and :generateContent endpoints', async () => {
+    const sampleBase64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+
+    // Simulate :predict returning 404 on gemini-3.1-flash-lite-image and succeeding on :generateContent with inlineData
+    const calledUrls: string[] = [];
+    global.fetch = vi.fn().mockImplementation(async (url: string) => {
+      calledUrls.push(url);
+      if (url.includes(':predict')) {
+        return {
+          ok: false,
+          status: 404,
+          headers: new Headers(),
+          json: async () => ({
+            error: { message: 'models/gemini-3.1-flash-lite-image is not supported for predict. Use generateContent.' },
+          }),
+        };
+      }
+      return {
+        ok: true,
+        status: 200,
+        headers: new Headers(),
+        json: async () => ({
+          candidates: [
+            {
+              content: {
+                parts: [
+                  { text: 'Generated 3D character render' },
+                  {
+                    inlineData: {
+                      mimeType: 'image/png',
+                      data: sampleBase64,
+                    },
+                  },
+                ],
+              },
+            },
+          ],
+        }),
+      };
+    });
+
+    const engine = new Gemini3DStudioEngine('AIzaSy_valid_mock_key_12345');
+    const dataUri = await engine.generateImage(
+      'gemini-3.1-flash-lite-image',
+      '3D CGI robot character on studio backdrop',
+      'AIzaSy_valid_mock_key_12345'
+    );
+
+    expect(dataUri).toBe(`data:image/png;base64,${sampleBase64}`);
+    expect(calledUrls.some((u) => u.includes('models/gemini-3.1-flash-lite-image:generateContent'))).toBe(true);
+  });
+
+  // 18. Google Model Discovery API Verification Status Distinctions
+  it('distinguishes available_untested, verified_and_tested, permission_denied, not_available_to_key, and unsupported_for_image_output', async () => {
+    const sampleBase64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+    const engine = new Gemini3DStudioEngine('AIzaSy_valid_mock_key_12345');
+
+    // (a) Text model supporting image input must be rejected for image output
+    const textModelStatus = await engine.verifyImageGenerationModel('gemini-2.5-pro', 'AIzaSy_valid_mock_key_12345', false);
+    expect(textModelStatus.status).toBe('unsupported_for_image_output');
+    expect(textModelStatus.isSupportedByApp).toBe(false);
+    expect(textModelStatus.isTestedForImageGeneration).toBe(false);
+
+    // (b) Model present in Google's Models API with testGeneration=false -> available_untested (NOT marked tested!)
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: new Headers(),
+      json: async () => ({
+        name: 'models/gemini-3.1-flash-lite-image',
+        displayName: 'Nano Banana 2 Lite',
+        supportedGenerationMethods: ['generateContent', 'predict'],
+      }),
+    } as any);
+
+    const untestedStatus = await engine.verifyImageGenerationModel(
+      'gemini-3.1-flash-lite-image',
+      'AIzaSy_valid_mock_key_12345',
+      false
+    );
+    expect(untestedStatus.status).toBe('available_untested');
+    expect(untestedStatus.isOfficiallyDocumented).toBe(true);
+    expect(untestedStatus.isAvailableToApiKey).toBe(true);
+    expect(untestedStatus.isSupportedByApp).toBe(true);
+    expect(untestedStatus.isTestedForImageGeneration).toBe(false);
+
+    // (c) Model verified AND tested with actual image generation -> verified_and_tested
+    global.fetch = vi.fn().mockImplementation(async (url: string, opts?: any) => {
+      if (!opts || opts.method === 'GET') {
+        return {
+          ok: true,
+          status: 200,
+          headers: new Headers(),
+          json: async () => ({
+            name: 'models/gemini-3.1-flash-lite-image',
+            displayName: 'Nano Banana 2 Lite',
+            supportedGenerationMethods: ['generateContent', 'predict'],
+          }),
+        };
+      }
+      return {
+        ok: true,
+        status: 200,
+        headers: new Headers(),
+        json: async () => ({
+          predictions: [{ bytesBase64Encoded: sampleBase64 }],
+        }),
+      };
+    });
+
+    const testedStatus = await engine.verifyImageGenerationModel(
+      'gemini-3.1-flash-lite-image',
+      'AIzaSy_valid_mock_key_12345',
+      true
+    );
+    expect(testedStatus.status).toBe('verified_and_tested');
+    expect(testedStatus.isTestedForImageGeneration).toBe(true);
+
+    // (d) 404 Not Available to API Key
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 404,
+      headers: new Headers(),
+      json: async () => ({ error: { message: 'Model not found for project' } }),
+    } as any);
+
+    const notFoundStatus = await engine.verifyImageGenerationModel(
+      'gemini-3-pro-image',
+      'AIzaSy_valid_mock_key_12345',
+      false
+    );
+    expect(notFoundStatus.status).toBe('not_available_to_key');
+    expect(notFoundStatus.isAvailableToApiKey).toBe(false);
+    expect(notFoundStatus.isOfficiallyDocumented).toBe(true);
   });
 });

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { X, Key, Check, Sparkles, Cpu, SlidersHorizontal, ShieldCheck } from 'lucide-react';
-import { AVAILABLE_GEMINI_MODELS, DEEP_RESEARCH_MODELS, GeminiModelSuiteConfig, GeminiModelEntry } from '@studio/types';
+import { AVAILABLE_GEMINI_MODELS, DEEP_RESEARCH_MODELS, OFFICIAL_IMAGE_GENERATION_MODELS, GeminiModelSuiteConfig, GeminiModelEntry } from '@studio/types';
 import { usePureStudioStore } from '../../stores/usePureStudioStore';
 
 interface SettingsDialogProps {
@@ -204,17 +204,19 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({ isOpen, onClose 
                   <label className="font-bold text-slate-200 block">
                     4. 3D CGI Visual Artist (Image)
                   </label>
-                  <p className="text-[11px] text-slate-400">Canonical turnaround & conditioned shots</p>
+                  <p className="text-[11px] text-slate-400">Official Nano Banana image generation suite</p>
                   <select
                     value={localModels.imageModel}
                     onChange={(e) => handleModelChange('imageModel', e.target.value)}
                     className="w-full bg-slate-900 border border-slate-700 text-white rounded-lg p-2 text-xs font-mono focus:border-amber-400 outline-none"
                   >
-                    {AVAILABLE_GEMINI_MODELS.map((m: GeminiModelEntry) => (
-                      <option key={m.id} value={m.id}>
-                        {m.name} ({m.id}) [{m.category}]
-                      </option>
-                    ))}
+                    <optgroup label="Official Gemini Image Generation Models">
+                      {OFFICIAL_IMAGE_GENERATION_MODELS.map((m: GeminiModelEntry) => (
+                        <option key={m.id} value={m.id}>
+                          {m.name} ({m.id})
+                        </option>
+                      ))}
+                    </optgroup>
                   </select>
                 </div>
 
