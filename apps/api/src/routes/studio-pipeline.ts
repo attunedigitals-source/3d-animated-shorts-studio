@@ -192,6 +192,40 @@ router.post('/generate/character-sheet', async (req: Request, res: Response) => 
 });
 
 /**
+ * POST /api/generate/continuity
+ * Spatial & Continuity Supervision via gemini-4-argon
+ */
+router.post('/generate/continuity', async (req: Request, res: Response) => {
+  try {
+    const { beats, character, modelId } = req.body;
+    const { geminiKey } = extractKeys(req);
+
+    if (!beats || !Array.isArray(beats) || !character) {
+      res.status(400).json({ success: false, error: { message: 'Beats and character are required.' } });
+      return;
+    }
+
+    const continuity = await geminiEngine.auditSpatialContinuity(
+      beats,
+      character,
+      geminiKey,
+      modelId
+    );
+    res.json({ success: true, data: continuity });
+  } catch (err: any) {
+    const status = err.statusCode || 500;
+    res.status(status).json({
+      success: false,
+      error: {
+        code: err.errorCode || 'CONTINUITY_FAILED',
+        message: sanitizeErrorMessage(err.message),
+        isRetryable: Boolean(err.isRetryable),
+      },
+    });
+  }
+});
+
+/**
  * POST /api/generate/voice
  * Voice Narration with Millisecond Word Timestamps via ai33.pro
  */

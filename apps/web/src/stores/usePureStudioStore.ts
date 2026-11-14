@@ -72,6 +72,8 @@ export const GENERATION_STAGES: GenerationStageInfo[] = [
   },
 ];
 
+export type StepExecutionStatus = 'idle' | 'generating' | 'completed' | 'failed';
+
 interface PureStudioState {
   topic: string;
   aspectRatio: VideoFormat;
@@ -88,6 +90,10 @@ interface PureStudioState {
   progressPercent: number;
   errorMessage: string | null;
   isRetryableError: boolean;
+
+  // Per-step execution status & errors
+  stepStatuses: Record<string, StepExecutionStatus>;
+  stepErrors: Record<string, string | null>;
 
   project: Pure3DStudioProject | null;
 
@@ -111,10 +117,22 @@ interface PureStudioState {
   setIsPlaying: (playing: boolean) => void;
   setActiveBeatIndex: (idx: number) => void;
 
+  generateStep: (stepId: string) => Promise<boolean>;
   generateProject: () => Promise<void>;
   retryGeneration: () => Promise<void>;
   loadSavedPreferences: () => void;
 }
+
+const INITIAL_STEP_STATUSES: Record<string, StepExecutionStatus> = {
+  researching: 'idle',
+  scripting: 'idle',
+  generating_anchor_sheet: 'idle',
+  auditing_continuity: 'idle',
+  synthesizing_voice: 'idle',
+  directing_and_rendering_shots: 'idle',
+  composing_music: 'idle',
+  running_visual_qa: 'idle',
+};
 
 export const usePureStudioStore = create<PureStudioState>((set, get) => ({
   topic: "Napoleon's disastrous winter retreat from Moscow in 1812",
@@ -130,6 +148,9 @@ export const usePureStudioStore = create<PureStudioState>((set, get) => ({
   progressPercent: 0,
   errorMessage: null,
   isRetryableError: false,
+
+  stepStatuses: { ...INITIAL_STEP_STATUSES },
+  stepErrors: {},
 
   project: null,
 
@@ -172,6 +193,185 @@ export const usePureStudioStore = create<PureStudioState>((set, get) => ({
     } catch {}
   },
 
+  generateStep: async (stepId: string) => {
+    const {
+      topic,
+      aspectRatio,
+      targetDurationSeconds,
+      selectedVoice,
+      sessionGeminiKey,
+      sessionAi33Key,
+      modelSuite,
+      project,
+    } = get();
+
+    const setStepState = (status: StepExecutionStatus, err: string | null = null) => {
+      set((state) => ({
+        stepStatuses: { ...state.stepStatuses, [stepId]: status },
+        stepErrors: { ...state.stepErrors, [stepId]: err },
+      }));
+    };
+
+    const ensureBaseProject = (): Pure3DStudioProject => {
+      const existing = get().project;
+      if (existing) return { ...existing, updatedAt: new Date().toISOString() };
+      const now = new Date().toISOString();
+      return {
+        id: `proj_${Date.now()}`,
+        title: `${topic} — 3D Cinematic`,
+        topic,
+        aspectRatio,
+        targetDurationSeconds,
+        characters: [],
+        canonicalSheets: [],
+        beats: [],
+        status: 'idle',
+        createdAt: now,
+        updatedAt: now,
+      };
+    };
+
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (sessionGeminiKey) headers['x-gemini-key'] = sessionGeminiKey;
+    if (sessionAi33Key) headers['x-ai33-key'] = sessionAi33Key;
+
+    setStepState('generating', null);
+
+    try {
+      let endpoint = '';
+      let payload: Record<string, any> = {};
+
+      if (stepId === 'researching') {
+        if (!topic.trim()) throw new Error('Please enter a story topic first.');
+        endpoint = '/api/generate/research';
+        payload = { topic, modelId: modelSuite.researcherModel };
+      } else if (stepId === 'scripting') {
+        if (!topic.trim()) throw new Error('Please enter a story topic first.');
+        endpoint = '/api/generate/story';
+        payload = {
+          topic,
+          research: project?.research,
+          aspectRatio,
+          modelId: modelSuite.screenwriterModel,
+        };
+      } else if (stepId === 'generating_anchor_sheet') {
+        const char = project?.characters?.[0];
+        if (!char) {
+          throw new Error('Please generate Step 2 (8-Beat Screenplay & Visual DNA) first so character attributes exist.');
+        }
+        endpoint = '/api/generate/character-sheet';
+        payload = { character: char, modelId: modelSuite.imageModel };
+      } else if (stepId === 'auditing_continuity') {
+        const char = project?.characters?.[0];
+        const beats = project?.beats;
+        if (!char || !beats || beats.length === 0) {
+          throw new Error('Please generate Step 2 (8-Beat Screenplay & Visual DNA) first.');
+        }
+        endpoint = '/api/generate/continuity';
+        payload = { beats, character: char, modelId: modelSuite.continuityModel };
+      } else if (stepId === 'synthesizing_voice') {
+        const beats = project?.beats;
+        if (!beats || beats.length === 0) {
+          throw new Error('Please generate Step 2 (8-Beat Screenplay & Visual DNA) first so dialogue lines exist.');
+        }
+        const scriptText = beats.map((b) => b.text).join(' ');
+        endpoint = '/api/generate/voice';
+        payload = { scriptText, voiceId: selectedVoice, speed: 1.0 };
+      } else if (stepId === 'directing_and_rendering_shots') {
+        const char = project?.characters?.[0];
+        const sheet = project?.canonicalSheets?.[0];
+        const beats = project?.beats;
+        if (!char || !beats || beats.length === 0 || !sheet) {
+          throw new Error('Please generate Step 2 (Screenplay) and Step 3 (Character Anchor Sheet) first.');
+        }
+        endpoint = '/api/generate/shots';
+        payload = {
+          beats,
+          character: char,
+          anchorSheet: sheet,
+          aspectRatio,
+          modelId: modelSuite.imageModel,
+        };
+      } else if (stepId === 'composing_music') {
+        endpoint = '/api/generate/music';
+        payload = {
+          mood: 'Intense cinematic orchestral score with driving rhythm',
+          durationSeconds: project?.narration?.durationSeconds || targetDurationSeconds,
+          timestamps: project?.narration?.timestamps,
+          modelId: modelSuite.musicModel,
+        };
+      } else if (stepId === 'running_visual_qa') {
+        const sheet = project?.canonicalSheets?.[0];
+        const shots = project?.shots;
+        if (!sheet || !shots || shots.length === 0) {
+          throw new Error('Please generate Step 3 (Character Anchor Sheet) and Step 6 (3D CGI Scene Keyframes) first.');
+        }
+        endpoint = '/api/qa/inspect';
+        payload = {
+          canonicalSheet: sheet,
+          shots,
+          beats: project?.beats || [],
+          modelId: modelSuite.qaModel,
+        };
+      } else {
+        throw new Error(`Unknown step ID: ${stepId}`);
+      }
+
+      const resp = await fetch(endpoint, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(payload),
+      });
+
+      const json = await resp.json().catch(() => ({}));
+      if (!resp.ok || !json.success) {
+        const msg = json?.error?.message || `Step failed with HTTP ${resp.status}`;
+        throw new Error(msg);
+      }
+
+      const data = json.data;
+      const updatedProject = ensureBaseProject();
+
+      if (stepId === 'researching') {
+        updatedProject.research = data;
+        updatedProject.researchNotes = data.summary;
+      } else if (stepId === 'scripting') {
+        updatedProject.title = data.title;
+        updatedProject.characters = [data.character];
+        updatedProject.beats = data.beats;
+      } else if (stepId === 'generating_anchor_sheet') {
+        updatedProject.canonicalSheets = [data];
+        if (updatedProject.characters[0]) {
+          updatedProject.characters[0] = {
+            ...updatedProject.characters[0],
+            canonicalSheetUrl: data.sheetImageUrl,
+          };
+        }
+      } else if (stepId === 'auditing_continuity') {
+        updatedProject.continuityAudit = data;
+      } else if (stepId === 'synthesizing_voice') {
+        updatedProject.narration = data;
+      } else if (stepId === 'directing_and_rendering_shots') {
+        updatedProject.shots = data;
+      } else if (stepId === 'composing_music') {
+        updatedProject.soundtrack = data;
+      } else if (stepId === 'running_visual_qa') {
+        updatedProject.qaReport = data;
+        updatedProject.status = 'completed';
+      }
+
+      set((state) => ({
+        project: updatedProject,
+        stepStatuses: { ...state.stepStatuses, [stepId]: 'completed' },
+        stepErrors: { ...state.stepErrors, [stepId]: null },
+      }));
+      return true;
+    } catch (err: any) {
+      setStepState('failed', err.message || 'Step generation failed.');
+      return false;
+    }
+  },
+
   generateProject: async () => {
     const { topic, aspectRatio, targetDurationSeconds, selectedVoice, sessionGeminiKey, sessionAi33Key, modelSuite } = get();
 
@@ -184,6 +384,11 @@ export const usePureStudioStore = create<PureStudioState>((set, get) => ({
       isPlaying: false,
       currentTimeMs: 0,
       activeBeatIndex: 0,
+      stepStatuses: {
+        ...INITIAL_STEP_STATUSES,
+        researching: 'generating',
+      },
+      stepErrors: {},
     });
 
     const headers: Record<string, string> = {
@@ -248,6 +453,17 @@ export const usePureStudioStore = create<PureStudioState>((set, get) => ({
         currentStage: 'completed',
         progressPercent: 100,
         isPlaying: true,
+        stepStatuses: {
+          researching: 'completed',
+          scripting: 'completed',
+          generating_anchor_sheet: 'completed',
+          auditing_continuity: 'completed',
+          synthesizing_voice: 'completed',
+          directing_and_rendering_shots: 'completed',
+          composing_music: 'completed',
+          running_visual_qa: 'completed',
+        },
+        stepErrors: {},
       });
     } catch (err: any) {
       console.error('[Pipeline Fetch Error]:', err);

@@ -71,6 +71,7 @@ export class Pure3DStudioPipelineOrchestrator {
         suite.researcherModel
       );
       project.researchNotes = research.summary;
+      project.research = research;
 
       // 2. Screenwriting & Character DNA
       notify('scripting', 25);
@@ -103,12 +104,13 @@ export class Pure3DStudioPipelineOrchestrator {
       // 4. Spatial Continuity Supervision
       notify('auditing_continuity', 50);
       project.status = 'auditing_continuity';
-      await this.geminiEngine.auditSpatialContinuity(
+      const continuityAudit = await this.geminiEngine.auditSpatialContinuity(
         beats,
         character,
         options.geminiKey,
         suite.continuityModel
       );
+      project.continuityAudit = continuityAudit;
 
       // 5. Voice Synthesis with Word Timestamps
       notify('synthesizing_voice', 60);

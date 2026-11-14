@@ -18,6 +18,7 @@ import { usePureStudioStore, GENERATION_STAGES } from '../../stores/usePureStudi
 import { Pure3DTheater } from './Pure3DTheater';
 import { CanonicalSheetModal } from './CanonicalSheetModal';
 import { SettingsDialog } from './SettingsDialog';
+import { StepByStepPipelineSection } from './StepByStepPipelineSection';
 
 const VIRAL_PRESETS = [
   "Napoleon's disastrous winter retreat from Moscow 1812",
@@ -311,8 +312,13 @@ export const Pure3DStudioView: React.FC = () => {
           </section>
         )}
 
+        {/* Step-by-Step Generate & Result Pipeline Cards */}
+        <StepByStepPipelineSection
+          onOpenSheetModal={() => setIsSheetModalOpen(true)}
+        />
+
         {/* Studio Theater Screen */}
-        {project && (
+        {project && project.shots && project.shots.length > 0 && (
           <section className="space-y-6">
             <div className="flex items-center justify-between">
               <div>

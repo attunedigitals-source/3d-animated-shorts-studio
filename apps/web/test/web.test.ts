@@ -38,5 +38,13 @@ describe('Pure 3D Studio Web App', () => {
     // Zustand store is in-memory by design; no persist middleware is attached.
     expect(usePureStudioStore.getState().sessionGeminiKey).toBe('AIzaSy_session_key_12345');
   });
+
+  it('tracks individual step statuses and exposes generateStep for all 8 steps', () => {
+    const state = usePureStudioStore.getState();
+    expect(typeof state.generateStep).toBe('function');
+    for (const stage of GENERATION_STAGES) {
+      expect(state.stepStatuses[stage.id]).toBe('idle');
+    }
+  });
 });
 

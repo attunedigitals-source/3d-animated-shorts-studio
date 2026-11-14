@@ -276,6 +276,25 @@ export const ProjectErrorDetailsSchema = z.object({
 
 export type ProjectErrorDetails = z.infer<typeof ProjectErrorDetailsSchema>;
 
+export const ResearchDataSchema = z.object({
+  viralHooks: z.array(z.string()),
+  obscureFacts: z.array(z.string()),
+  retentionAngles: z.array(z.string()),
+  pacingNotes: z.string(),
+  summary: z.string(),
+  provenance: AssetProvenanceSchema.default('ai_generated'),
+  modelUsed: z.string().optional(),
+});
+
+export type ResearchData = z.infer<typeof ResearchDataSchema>;
+
+export const ContinuityAuditResultSchema = z.object({
+  isContinuous: z.boolean(),
+  continuityAuditNotes: z.string(),
+});
+
+export type ContinuityAuditResult = z.infer<typeof ContinuityAuditResultSchema>;
+
 export const Pure3DStudioProjectSchema = z.object({
   id: z.string(),
   title: z.string(),
@@ -283,8 +302,10 @@ export const Pure3DStudioProjectSchema = z.object({
   aspectRatio: VideoFormatSchema.default('9:16'),
   targetDurationSeconds: z.number().default(60),
   researchNotes: z.string().optional(),
+  research: ResearchDataSchema.optional(),
   characters: z.array(CharacterDNASchema),
   canonicalSheets: z.array(CanonicalCharacterSheetSchema),
+  continuityAudit: ContinuityAuditResultSchema.optional(),
   beats: z.array(NarrativeBeatSchema),
   narration: AudioNarrationSchema.optional(),
   shots: z.array(RenderedShotSchema).optional(),
